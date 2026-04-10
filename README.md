@@ -19,17 +19,16 @@
   - Python: 3.x, VS Code의 Python language pack
 
 
-## [Task 1](/Task1/readme.md): 간단한 함수 코드 작성하기 (**Code 완성** 기능 사용)
- - GitHub Copilot를 활용한 간단한 함수와 테스트 코드를 제안받는 실습입니다. 이를 통해 기본적인 Copilot의 기능을 활용하는 방법을 익힙니다. 
- - GitHub Copilot Log를 확인하여, 오픈소스와 매치되는 코드인 경우 레퍼런스 정보를 확인합니다. 
- - VS Code의 Copilot 메뉴 기본적인 설정들을 변경해 봅니다. 
+## [Task 1](/Task1/readme.md): 계산기 함수 완성하기 (**Copilot Chat – Agent Mode** 사용)
+ - GitHub Copilot Chat의 Agent Mode를 활용하여 미리 준비된 계산기 스켈레톤 코드의 구현을 완성합니다.
+ - Agent Mode가 코드 수정, 터미널 실행, 검증까지 자율적으로 수행하는 과정을 체험합니다.
+ - Agent Mode를 활용한 테스트 코드 자동 생성과 VS Code Copilot 설정을 확인합니다.
 
-## [Task 2](/Task2/readme.md): 가위, 바위, 보 게임 만들기 (**Copilot Chat** 기능 사용)
- - GitHub Copilot과 함께 가위, 바위, 보 게임을 만들어 봅니다.
- - Copilot을 통해 테스트 코드를 작성해 봅니다.
- - Copilot chat의 각종 메뉴들을 사용해 봅니다.
- - Copilot Code Review를 통해, 코드에 대한 리뷰를 받아 봅니다.
- - 이미지를 Copilot Chat에 컨텍스트로 제공하고(Vision기능), 코드를 제안받아 봅니다.
+## [Task 2](/Task2/readme.md): 간단한 웹 게임 만들기 (**Copilot Chat** 기능 사용)
+ - GitHub Copilot Chat을 활용하여 2048 웹 게임을 만들어 봅니다.
+ - Copilot Chat의 Ask 모드로 HTML/CSS/JavaScript 코드를 생성합니다.
+ - Vision 기능으로 디자인 이미지를 기반으로 코드를 제안받아 봅니다.
+ - Copilot Code Review와 Custom Instruction을 활용하여 코드 리뷰를 받아 봅니다.
 
 ## [Task 3](/Task3/readme.md): 나만의 음성비서 앱만들기 (AI 및 LLM활용)
 - 간단한 채팅 앱을 로컬에서 생성하고 기동해봅니다.
