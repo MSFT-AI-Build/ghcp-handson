@@ -5,6 +5,10 @@
 ## 사전 준비
 
 - Node.js 18+ / Python 3.12+
+```
+sudo apt update
+sudo apt install -y nodejs
+```
 - Azure OpenAI 리소스 (Endpoint, API Key, 배포된 모델명)
 - GitHub Copilot이 활성화된 IDE (Github Codespace / VS Code 등)
 
