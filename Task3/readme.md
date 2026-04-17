@@ -19,7 +19,7 @@
 <img width="1150" height="645" alt="image-2" src="https://github.com/user-attachments/assets/391d5c77-6a36-4561-ac48-bf5c6dbf367b" />
 <br>
 - 간단한 파이썬 웹앱 코드를 생성해달라고 Copilot Chat에 입력합니다. <br>
-`파이썬 코드로, 웹화면을 띄워주는 코드를 새로 만들어주고, 상단에는 사용자 Input을 받고 아래는 send 버튼을 만들어줘` <br>
+`파이썬 코드로, 웹화면을 띄워주는 코드를 새로 만들어주고, 상단에는 사용자 Input을 받고 아래는 send 버튼을 만들어줘`
 <br>
 
 ### 1-3. 프로젝트 워크스페이스 생성
