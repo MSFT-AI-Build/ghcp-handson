@@ -1,4 +1,4 @@
-<img width="1151" height="645" alt="image-3" src="https://github.com/user-attachments/assets/000f2f5c-79fe-4322-9251-f251b526adaf" /># Task 3: 나만의 음성비서 앱만들기 (AI 및 LLM활용)
+# Task 3: 나만의 음성비서 앱만들기 (AI 및 LLM활용)
 - 간단한 채팅 앱을 로컬에서 생성하고 기동해봅니다.
 - 채팅앱에 생성형 LLM을 통해 답변을 받도록 기능을 추가합니다.
 - 음성 인식 기능과 음성 출력 기능을 추가합니다.
