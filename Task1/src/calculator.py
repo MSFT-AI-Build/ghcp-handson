@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
 """
 간단한 계산기 모듈
-GitHub Copilot Chat - Agent Mode를 활용하여 각 함수의 구현을 완성하세요.
+GitHub Copilot Chat - Ask Mode를 활용하여 각 함수의 구현을 완성하세요.
 """
 
 
