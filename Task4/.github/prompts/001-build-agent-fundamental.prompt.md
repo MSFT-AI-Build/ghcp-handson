@@ -35,6 +35,7 @@ User ──► Chat UI ──► REST API Server
 - Agent Class: `agent_framework.Agent` 를 사용하고, chat_client 로 `agent_framework.openai.OpenAIChatClient` 를 사용한다. 예제 코드는 https://github.com/microsoft/agent-framework/blob/b89adb280b45a41ab0f0ff28d7947a73d3adbd4c/python/samples/02-agents/providers/azure/openai_client_basic.py#L9 을 참고한다. Client credential 은 API Key 를 사용한다.
 - 다른 패키지는 버전을 명시하지 않아도 된다.
 - OpenAIChatClient 의 argument 로 api_version 을 전달하지 않아도 된다.
+- .env 파일을 사용하여 azure_openai_key, azure_openai_endpoint, azure_openai_deployment 값을 설정할 수 있다. (예: `AZURE_OPENAI_KEY=xxx`)
 
 # 테스트 및 완료 기준 (Agent 연동)
 
