@@ -173,3 +173,38 @@ Worker가 작업을 완료하면 결과를 전달받게 됩니다. 해당 결과
 - Worker 의 상태 변경(시작 / 완료 / 실패)을 실시간으로 표시한다.
 - 작업이 완료되면 Supervisor 가 요약한 결과를 사용자에게 보여준다.
 - Agents 페이지에서 Supervisor 와 활성 Worker 목록, 각각의 role 과 work directory 정보를 조회할 수 있다.
+
+# 테스트 및 완료 기준 (Supervisor · Worker · SSE)
+
+구현과 함께 **자동 테스트**를 추가하고, 로컬/CI에서 **통과**하는 것을 Step 4 완료 조건으로 한다. **Azure OpenAI·실제 MCP 프로세스**는 테스트에서 **목(mock)** 으로 대체한다 (`AGENTS.md`의 “Mock external services in tests” 준수).
+
+## Backend (Python)
+
+- **프레임워크**: `pytest`. HTTP는 Step 1과 동일하게 `httpx` `AsyncClient` 또는 FastAPI `TestClient`로 **기존 API 전체 회귀**를 유지한다.
+- **Supervisor 전용 Native Tool** (`delegate_task`, `check_workers`, `cancel_worker`):
+  - **WorkerManager** 또는 동등 레이어를 **목 LLM/목 Worker 실행**과 함께 검증: 위임 시 work directory·`AGENT.md` 생성, `check_workers` 반환 스키마, `cancel_worker` 후 상태(`cancelled` 등).
+  - Supervisor 가 **MCP Bridge Tool 을 직접 등록하지 않았는지**(아키텍처 제약) 구현 수준이 허용하면 단언한다.
+- **Worker Agent**:
+  - Worker 실행 경로는 **Agent.run / OpenAIChatClient 를 목**으로 두고, MCP 호출은 Step 2와 같이 MCP Client **목**으로 고정 응답을 반환하게 한다.
+- **Supervisor Memory (자동 주입·`[MEMORY_SAVE]`)**:
+  - 대화 시작 시 `MEMORY.md` 주입, 응답 내 `[MEMORY_SAVE]` 파싱 후 파일 반영 로직이 있으면 **파일 I/O 또는 목**으로 단위 테스트한다.
+- **SSE (Worker 상태 브로드캐스트)**:
+  - 상태 전이(`pending` → `running` → `completed` / `failed` / `cancelled`) 시 **이벤트 페이로드**에 worker id·상태가 포함되는지 검증한다. 전체 브라우저 없이 `TestClient` 스트리밍 엔드포인트 또는 브로드캐스트 헬퍼를 직접 호출하는 방식 중 프로젝트에 맞게 선택한다.
+- **실패 시나리오** 최소 1건: 예) 존재하지 않는 `worker_id`로 `cancel_worker`, Worker 실패 시 `failed` 처리.
+
+## Frontend (TypeScript)
+
+- **프레임워크**: **Vitest** + **Testing Library**, API는 **MSW**로 목.
+- **범위**:
+  - Chat: Worker 생성·상태 변경에 따른 UI(역할·작업 요약·진행/완료/실패)가 **목 SSE 이벤트 또는 목 REST**에 맞게 갱신되는지 검증. SSE 전체를 붙잡기 어렵면 **이벤트 핸들러에 가짜 이벤트**를 넣는 단위 테스트로 대체 가능하다.
+  - Agents: Supervisor + 활성 Worker 목록, role·work directory 표시가 목 API와 일치하는지 검증.
+  - Step 1~3 UI 회귀(라우팅, tool 표시, 기존 Agents/Chat 동작).
+
+## 통과 조건 (Definition of Done)
+
+- `agent-app/backend`: `pytest` **전부 통과**(Step 1~3 테스트 포함 회귀).
+- `agent-app/frontend`: `npm test` 또는 `npm run test` **전부 통과**.
+- `README` 또는 `agent-app/README.md`에 아래를 **함께** 적어 재현 가능하게 한다.
+  - **실행**: backend / frontend 기동 명령, 필요 시 사전 단계(가상환경, `pip install`, `npm install`). Worker·MCP를 로컬에서 실제로 쓸 때는 `mcp_config.json`·`agent_work_dirs/`·MCP 서버 기동을 짧게 적는다.
+  - **테스트**: `pytest` / `npm test` 명령을 그대로 복사해 실행할 수 있게 한 줄씩.
+  - **테스트 재현**: **LLM·MCP 실프로세스 없이** 테스트만으로 재현하는 방법(예: “테스트는 Supervisor/Worker·MCP 목, 파일은 tmp”)을 한 줄 이상.

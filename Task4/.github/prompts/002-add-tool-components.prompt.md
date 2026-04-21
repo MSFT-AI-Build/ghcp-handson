@@ -131,7 +131,7 @@ MCP 서버들은 프로세스 initialization 시 `mcp_config.json` 에 정의된
 
 ## 필요 패키지
 - 이외 MCP 서버별로 필요한 패키지 (예: Notion API 클라이언트, Google Search API 클라이언트 등) 가 있으면 requirements.txt 에 추가한다.
--- **NoAPI Google Search MCP** 의 경우 playwright 와 chromium (`playwright install chromium`) 설치가 필요하다.
+- **NoAPI Google Search MCP** 의 경우 playwright 와 chromium (`playwright install chromium`) 설치가 필요하다.
 
 # Frontend
 
@@ -140,3 +140,31 @@ MCP 서버들은 프로세스 initialization 시 `mcp_config.json` 에 정의된
 - 각 tool 의 이름, 유형(Native/MCP), 설명, 상태(활성/비활성)를 표시한다.
 - MCP 서버의 연결 상태를 표시한다 (connected / disconnected / error).
 - Chat 페이지에서는 Agent 가 호출한 tool 과 결과를 대화 흐름에 표시한다. MCP Tool 의 경우 어떤 MCP 서버의 어떤 tool 이 호출되었는지도 함께 표시한다.
+
+# 테스트 및 완료 기준 (Agent · Tool 연동)
+
+구현과 함께 **자동 테스트**를 추가하고, 로컬/CI에서 **통과**하는 것을 Step 2 완료 조건으로 한다. **Azure OpenAI·실제 MCP 서버 프로세스·외부 SaaS API**는 테스트에서 **목(mock)** 또는 **페이크(fake)** 로 대체한다 (`AGENTS.md`의 “Mock external services in tests” 준수).
+
+## Backend (Python)
+
+- **프레임워크**: `pytest`. HTTP는 Step 1과 동일하게 `httpx` `AsyncClient` 또는 FastAPI `TestClient`.
+- **Native Tool**:
+  - 도구 함수(예: `calculate`)는 **순수 로직** 단위 테스트: 정상 입력·에러 입력(빈 문자열, 나눗셈 0 등) 최소 각 1건.
+  - Agent 에 tool 이 등록된 경로는 **LLM/Agent 실행부를 목**으로 두고, tool 호출이 발생하는 시나리오 또는 tool 미사용 시나리오 중 팀이 정한 수준까지 검증.
+- **MCP Bridge** (`mcp_list_tools`, `mcp_call_tool`):
+  - MCP Client·stdio/SSE·서버 프로세스는 유닛 테스트에서 **목**으로 주입하여 `tools/list`·`tools/call` 결과를 고정 문자열/JSON으로 반환하게 한다.
+  - 실패 시나리오 최소 1건: 예) 알 수 없는 `server` 이름, MCP 응답 에러 시 예외 또는 API 에러 매핑.
+- **설정**: `mcp_config.json` 로딩·스키마 검증이 있으면, 잘못된 JSON/필수 키 누락에 대한 테스트를 추가한다(선택이 아니라 구현했다면 필수).
+
+## Frontend (TypeScript)
+
+- **프레임워크**: **Vitest** + **Testing Library**. API는 **MSW**로 목.
+- **범위**:
+  - **Agents** 페이지: tool 목록 API(또는 정적 설정 노출 API) 목 응답에 따라 **이름·유형(Native/MCP)·상태**가 렌더되는지 확인. MCP 연결 상태(`connected` / `disconnected` / `error`) 표시가 있으면 각각 최소 한 번.
+  - **Chat**: tool 호출 메타데이터가 포함된 응답(또는 스트림 이벤트)을 목으로 주고, **어떤 tool·(MCP인 경우) server/tool** 이 UI에 드러나는지 확인.
+
+## 통과 조건 (Definition of Done)
+
+- `agent-app/backend`: `pytest` **전부 통과**(Step 1 테스트 포함 회귀).
+- `agent-app/frontend`: `npm test` 또는 `npm run test` **전부 통과**.
+- `README` 또는 `agent-app/README.md`에 위 명령과, **로컬에서 MCP 실서버 없이** 테스트만으로 재현하는 방법이 한 줄이라도 적혀 있으면 좋다(예: “테스트는 MCP/LLM 목 사용”).

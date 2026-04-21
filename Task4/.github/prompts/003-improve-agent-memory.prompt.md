@@ -87,3 +87,34 @@ User ──► Chat UI ──► REST API Server
   - 대화 종료까지 기다리지 말고, 중요한 정보가 나오는 시점에 바로 기록하세요.
 - AGENT.md 파일에는 당신의 역할과 능력이 정의되어 있습니다. 필요 시 참고하세요.
 ```
+
+# 테스트 및 완료 기준 (Agent · Memory · File System MCP)
+
+구현과 함께 **자동 테스트**를 추가하고, 로컬/CI에서 **통과**하는 것을 Step 3 완료 조건으로 한다. **Azure OpenAI·실제 File System MCP 프로세스**는 테스트에서 **목(mock)** 또는 **임시 디렉터리 + 페이크 MCP 응답**으로 대체한다 (`AGENTS.md`의 “Mock external services in tests” 준수).
+
+## Backend (Python)
+
+- **프레임워크**: `pytest`. HTTP는 Step 1과 동일하게 `httpx` `AsyncClient` 또는 FastAPI `TestClient`로 기존 API 회귀를 유지한다.
+- **Work directory**:
+  - 에이전트 생성 시 work directory·`AGENT.md` / `MEMORY.md` 초기화 로직이 있으면, **임시 디렉터리**(`tmp_path` 등)를 써서 경로 생성·파일 존재·기본 내용을 검증한다.
+  - 경로 조작·`agent_id`별 분리가 있으면 그에 맞는 단위 테스트를 추가한다.
+- **Memory ↔ File System MCP**:
+  - `read_file` / `write_file` 을 통한 흐름은 **MCP Bridge 또는 MCP Client를 목**으로 두고, `MEMORY.md` 읽기 → 병합 → 쓰기 순서가 코드에 있으면 그 **병합/덮어쓰기**를 고정 입력으로 검증한다.
+  - 별도 `load_memory` / `save_memory` Native Tool 을 **추가하지 않았는지**(또는 호출 경로가 MCP만인지) 테스트 또는 정적 검증으로 막을 수 있으면 좋다.
+- **실패 시나리오** 최소 1건: 예) `MEMORY.md` 읽기 실패(없음)·쓰기 실패 시 API/로그 동작.
+
+## Frontend (TypeScript)
+
+- **프레임워크**: **Vitest** + **Testing Library**, API는 **MSW**로 목.
+- **범위**:
+  - Step 1·2에서 만든 페이지·Chat 회귀(라우팅, 메시지 전송, tool 표시).
+  - Step 3에서 **Memory·work directory 경로·파일 미리보기** 등 UI를 추가했다면, 목 API에 맞게 렌더·에러 상태를 검증한다. UI 변경이 없으면 위 회귀만으로 충분하다.
+
+## 통과 조건 (Definition of Done)
+
+- `agent-app/backend`: `pytest` **전부 통과**(Step 1·2 테스트 포함 회귀).
+- `agent-app/frontend`: `npm test` 또는 `npm run test` **전부 통과**.
+- `README` 또는 `agent-app/README.md`에 아래를 **함께** 적어 재현 가능하게 한다.
+  - **실행**: backend / frontend 기동 명령, 필요 시 사전 단계(가상환경, `pip install`, `npm install`). 로컬에서 File System MCP를 실제로 쓸 때는 `mcp_config.json`·`agent_work_dirs/` 위치·MCP 서버 기동 방법을 짧게 적는다.
+  - **테스트**: `pytest` / `npm test` 명령을 그대로 복사해 실행할 수 있게 한 줄씩.
+  - **테스트 재현**: **MCP 실프로세스 없이** 테스트만으로 재현하는 방법(예: “테스트는 MCP/LLM 목, 파일은 tmp”)을 한 줄 이상.
