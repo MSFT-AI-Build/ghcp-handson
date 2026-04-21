@@ -1,353 +1,421 @@
 import { useEffect, useRef, useState } from "react";
-import { streamChat, type ChatMessage } from "../api";
+import ReactMarkdown from "react-markdown";
+import { sendChat, streamChat, type ToolEvent } from "../api";
 
-const SUGGESTIONS = [
-  "오늘 일정 정리해줘",
-  "이 코드 리뷰해줘",
-  "여행 계획 도와줘",
-];
+type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  message: string;
+  pending?: boolean;
+  tools?: ToolEvent[];
+};
 
-export default function ChatPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const logRef = useRef<HTMLDivElement>(null);
+const pageStyle: React.CSSProperties = {
+  maxWidth: 880,
+  margin: "0 auto",
+  display: "flex",
+  flexDirection: "column",
+  gap: "var(--space-lg)",
+};
 
-  useEffect(() => {
-    const el = logRef.current;
-    if (el && typeof el.scrollTo === "function") {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    }
-  }, [messages, loading]);
+const headerStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+};
 
-  async function send(text: string) {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    setError(null);
-    setMessages((m) => [
-      ...m,
-      { role: "user", message: trimmed },
-      { role: "assistant", message: "" },
-    ]);
-    setInput("");
-    setLoading(true);
-    try {
-      await streamChat(trimmed, {
-        onDelta: (chunk) => {
-          setMessages((m) => {
-            const next = m.slice();
-            const last = next[next.length - 1];
-            if (last && last.role === "assistant") {
-              next[next.length - 1] = { ...last, message: last.message + chunk };
-            }
-            return next;
-          });
-        },
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      setMessages((m) => {
-        const last = m[m.length - 1];
-        if (last && last.role === "assistant" && last.message === "") {
-          return m.slice(0, -1);
-        }
-        return m;
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
+const cardStyle: React.CSSProperties = {
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-lg)",
+  boxShadow: "var(--shadow-md)",
+  padding: "var(--space-lg)",
+  display: "flex",
+  flexDirection: "column",
+  gap: "var(--space-md)",
+};
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    send(input);
-  }
+const listStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "var(--space-md)",
+  maxHeight: 540,
+  overflowY: "auto",
+  paddingRight: 4,
+};
 
-  const empty = messages.length === 0;
+const rowStyle = (role: "user" | "assistant"): React.CSSProperties => ({
+  display: "flex",
+  gap: 12,
+  alignItems: "flex-start",
+  flexDirection: role === "user" ? "row-reverse" : "row",
+});
 
-  return (
-    <section
-      aria-label="Chat"
-      style={{
-        display: "grid",
-        gridTemplateRows: "auto 1fr auto",
-        gap: "var(--space-md)",
-        height: "100%",
-        maxWidth: 860,
-        margin: "0 auto",
-      }}
-    >
-      <header>
-        <h1>Chat</h1>
-        <p style={{ margin: 0, color: "var(--text-muted)" }}>
-          에이전트와 대화하세요.
-        </p>
-      </header>
+const avatarStyle = (role: "user" | "assistant"): React.CSSProperties => ({
+  width: 32,
+  height: 32,
+  borderRadius: "50%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background:
+    role === "user" ? "var(--primary-grad)" : "rgba(255, 255, 255, 0.06)",
+  border:
+    role === "user"
+      ? "1px solid rgba(108, 140, 255, 0.5)"
+      : "1px solid var(--border)",
+  color: "var(--text)",
+  flexShrink: 0,
+});
 
-      <div
-        ref={logRef}
-        role="log"
-        aria-live="polite"
-        className="card"
-        style={{
-          padding: "var(--space-lg)",
-          overflow: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--space-md)",
-        }}
-      >
-        {empty && (
-          <div
-            style={{
-              display: "grid",
-              placeItems: "center",
-              gap: "var(--space-md)",
-              padding: "var(--space-xl) 0",
-              color: "var(--text-muted)",
-              textAlign: "center",
-            }}
-          >
-            <div
-              aria-hidden
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 16,
-                background: "var(--primary-grad)",
-                boxShadow: "var(--primary-glow)",
-              }}
-            />
-            <div style={{ fontSize: 16, color: "var(--text)", fontWeight: 600 }}>
-              무엇을 도와드릴까요?
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => send(s)}
-                  style={{
-                    background: "var(--surface-alt)",
-                    color: "var(--text)",
-                    border: "1px solid var(--border)",
-                    fontWeight: 500,
-                    padding: "8px 14px",
-                    borderRadius: 999,
-                    boxShadow: "none",
-                  }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+const bubbleStyle = (
+  role: "user" | "assistant",
+  pending: boolean
+): React.CSSProperties => ({
+  background:
+    role === "user"
+      ? "linear-gradient(135deg, rgba(108,140,255,0.20), rgba(140,108,255,0.18))"
+      : "rgba(255,255,255,0.04)",
+  border:
+    role === "user"
+      ? "1px solid rgba(108, 140, 255, 0.4)"
+      : "1px solid var(--border)",
+  borderRadius: 14,
+  padding: "10px 14px",
+  maxWidth: "70%",
+  whiteSpace: "pre-wrap",
+  color: "var(--text)",
+  opacity: pending ? 0.6 : 1,
+});
 
-        {messages.map((m, i) => {
-          const isLast = i === messages.length - 1;
-          if (
-            isLast &&
-            loading &&
-            m.role === "assistant" &&
-            m.message === ""
-          ) {
-            return <TypingIndicator key={i} />;
-          }
-          return <MessageBubble key={i} message={m} streaming={isLast && loading} />;
-        })}
+const toolCardStyle: React.CSSProperties = {
+  display: "inline-flex",
+  gap: 8,
+  padding: "6px 8px",
+  border: "1px dashed rgba(255, 200, 110, 0.45)",
+  background: "rgba(255, 200, 110, 0.05)",
+  borderRadius: 8,
+  fontSize: 11.5,
+  lineHeight: 1.35,
+  alignItems: "flex-start",
+  maxWidth: "100%",
+};
 
-        {error && (
-          <div
-            role="alert"
-            style={{
-              color: "var(--danger)",
-              background: "rgba(255, 107, 129, 0.08)",
-              border: "1px solid rgba(255, 107, 129, 0.3)",
-              borderRadius: "var(--radius-sm)",
-              padding: "10px 14px",
-            }}
-          >
-            {error}
-          </div>
-        )}
-      </div>
+const toolListStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  marginBottom: 6,
+};
 
-      <form
-        onSubmit={handleSubmit}
-        className="card"
-        style={{
-          display: "flex",
-          gap: "var(--space-sm)",
-          padding: 8,
-          alignItems: "center",
-        }}
-      >
-        <input
-          aria-label="message"
-          placeholder="메시지를 입력하세요…"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={loading}
-          style={{ background: "transparent", border: "none", boxShadow: "none" }}
-        />
-        <button type="submit" disabled={loading || !input.trim()}>
-          {loading ? "Sending…" : "Send"}
-        </button>
-      </form>
-    </section>
-  );
-}
+const inputRow: React.CSSProperties = {
+  display: "flex",
+  gap: "var(--space-sm)",
+};
 
-function MessageBubble({
-  message,
-  streaming,
-}: {
-  message: ChatMessage;
-  streaming?: boolean;
-}) {
-  const isUser = message.role === "user";
-  return (
-    <div
-      data-role={message.role}
-      style={{
-        display: "flex",
-        gap: 10,
-        alignItems: "flex-end",
-        flexDirection: isUser ? "row-reverse" : "row",
-        animation: "fade-in-up 0.18s ease",
-      }}
-    >
-      <Avatar role={message.role} />
-      <div
-        style={{
-          background: isUser ? "var(--primary-grad)" : "var(--surface-alt)",
-          color: isUser ? "white" : "var(--text)",
-          padding: "10px 14px",
-          borderRadius: 16,
-          borderBottomRightRadius: isUser ? 4 : 16,
-          borderBottomLeftRadius: isUser ? 16 : 4,
-          maxWidth: "78%",
-          boxShadow: isUser ? "var(--primary-glow)" : "var(--shadow-sm)",
-          lineHeight: 1.5,
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-        }}
-      >
-        {message.message}
-        {streaming && !isUser && (
-          <span
-            aria-hidden
-            style={{
-              display: "inline-block",
-              width: 8,
-              height: 14,
-              marginLeft: 4,
-              verticalAlign: "-2px",
-              background: "var(--text-muted)",
-              borderRadius: 2,
-              animation: "blink 1s infinite",
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
+const inputStyle: React.CSSProperties = {
+  flex: 1,
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-md)",
+  padding: "12px 14px",
+  color: "var(--text)",
+  fontFamily: "inherit",
+  fontSize: 15,
+};
 
-function Avatar({ role }: { role: ChatMessage["role"] }) {
-  const isUser = role === "user";
-  return (
-    <div
-      aria-label={isUser ? "User" : "Assistant"}
-      title={isUser ? "User" : "Assistant"}
-      style={{
-        width: 30,
-        height: 30,
-        borderRadius: 10,
-        flexShrink: 0,
-        display: "grid",
-        placeItems: "center",
-        color: "white",
-        background: isUser
-          ? "linear-gradient(135deg, #4ade80, #22c55e)"
-          : "var(--primary-grad)",
-        boxShadow: "var(--shadow-sm)",
-      }}
-    >
-      {isUser ? <UserIcon /> : <AssistantIcon />}
-    </div>
-  );
-}
+const buttonStyle: React.CSSProperties = {
+  background: "var(--primary-grad)",
+  border: "none",
+  borderRadius: "var(--radius-md)",
+  color: "white",
+  fontWeight: 600,
+  padding: "0 18px",
+  cursor: "pointer",
+  boxShadow: "var(--primary-glow)",
+};
 
 function UserIcon() {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+    <svg viewBox="0 0 24 24" width={18} height={18} fill="none" aria-hidden>
+      <circle cx="12" cy="8" r="4" stroke="white" strokeWidth="1.6" />
+      <path
+        d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"
+        stroke="white"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
 
 function AssistantIcon() {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <rect x="4" y="7" width="16" height="12" rx="3" />
-      <path d="M12 3v4" />
-      <circle cx="9" cy="13" r="1.2" fill="currentColor" stroke="none" />
-      <circle cx="15" cy="13" r="1.2" fill="currentColor" stroke="none" />
-      <path d="M2 13h2M20 13h2" />
+    <svg viewBox="0 0 24 24" width={18} height={18} fill="none" aria-hidden>
+      <rect x="3" y="6" width="18" height="13" rx="3" stroke="#8aa6ff" strokeWidth="1.6" />
+      <circle cx="9" cy="12.5" r="1.4" fill="#8aa6ff" />
+      <circle cx="15" cy="12.5" r="1.4" fill="#8aa6ff" />
+      <path d="M12 3v3" stroke="#8aa6ff" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
 
-function TypingIndicator() {
-  const dot: React.CSSProperties = {
-    width: 6,
-    height: 6,
-    borderRadius: "50%",
-    background: "var(--text-muted)",
-    display: "inline-block",
-    animation: "blink 1.2s infinite both",
-  };
+function ToolIcon() {
   return (
-    <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-      <Avatar role="assistant" />
-      <div
-        style={{
-          background: "var(--surface-alt)",
-          padding: "12px 14px",
-          borderRadius: 16,
-          borderBottomLeftRadius: 4,
-          display: "inline-flex",
-          gap: 4,
-        }}
-      >
-        <span style={dot} />
-        <span style={{ ...dot, animationDelay: "0.2s" }} />
-        <span style={{ ...dot, animationDelay: "0.4s" }} />
+    <svg viewBox="0 0 24 24" width={12} height={12} fill="none" aria-hidden style={{ flexShrink: 0, marginTop: 2 }}>
+      <path
+        d="M14.7 6.3a3 3 0 0 0-4 4L4 17v3h3l6.7-6.7a3 3 0 0 0 4-4l-2.3 2.3-2-2 2.3-2.3z"
+        stroke="rgb(255,200,110)"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ToolCallCard({ event }: { event: ToolEvent }) {
+  const title = event.server
+    ? `MCP · ${event.server} → ${event.name}`
+    : `Tool · ${event.name}`;
+  const hasArgs =
+    event.arguments !== undefined &&
+    event.arguments !== null &&
+    !(typeof event.arguments === "object" &&
+      Object.keys(event.arguments as object).length === 0);
+  const hasResult = event.result !== undefined && event.result !== null;
+  const [open, setOpen] = useState(false);
+  const canToggle = hasArgs || hasResult;
+  return (
+    <div style={toolCardStyle} data-testid="tool-event">
+      <ToolIcon />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <button
+          type="button"
+          onClick={() => canToggle && setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-label={`${title} 상세 ${open ? "접기" : "펼치기"}`}
+          disabled={!canToggle}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            background: "transparent",
+            border: "none",
+            color: "var(--text)",
+            font: "inherit",
+            fontSize: "inherit",
+            fontWeight: 600,
+            padding: 0,
+            cursor: canToggle ? "pointer" : "default",
+          }}
+        >
+          {canToggle && (
+            <span
+              aria-hidden
+              style={{
+                display: "inline-block",
+                fontSize: 9,
+                transition: "transform 120ms ease",
+                transform: open ? "rotate(90deg)" : "rotate(0deg)",
+                color: "var(--text-muted)",
+              }}
+            >
+              ▶
+            </span>
+          )}
+          <span style={{ wordBreak: "break-word" }}>{title}</span>
+        </button>
+        {open && (
+          <div
+            data-testid="tool-event-details"
+            style={{
+              marginTop: 4,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+              color: "var(--text-muted)",
+            }}
+          >
+            {hasArgs && (
+              <div style={{ wordBreak: "break-word" }}>
+                <span style={{ color: "var(--text-faint)" }}>args:</span>{" "}
+                <code style={{ color: "var(--text)", fontSize: 11 }}>
+                  {JSON.stringify(event.arguments)}
+                </code>
+              </div>
+            )}
+            {hasResult && (
+              <div style={{ wordBreak: "break-word" }}>
+                <span style={{ color: "var(--text-faint)" }}>result:</span>{" "}
+                <code style={{ color: "var(--text)", fontSize: 11 }}>
+                  {typeof event.result === "string"
+                    ? event.result
+                    : JSON.stringify(event.result)}
+                </code>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+let nextId = 1;
+const newId = () => `i${nextId++}`;
+
+export default function ChatPage() {
+  const [items, setItems] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (el && typeof el.scrollTo === "function") {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
+  }, [items]);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const message = input.trim();
+    if (!message || busy) return;
+    setInput("");
+    setError(null);
+    setBusy(true);
+
+    const userItem: ChatMessage = {
+      id: newId(),
+      role: "user",
+      message,
+    };
+    const placeholder: ChatMessage = {
+      id: newId(),
+      role: "assistant",
+      message: "",
+      pending: true,
+    };
+    setItems((prev) => [...prev, userItem, placeholder]);
+
+    try {
+      let streamed = "";
+      try {
+        await streamChat(message, {
+          onDelta: (chunk) => {
+            streamed += chunk;
+            setItems((prev) =>
+              prev.map((it) =>
+                it.id === placeholder.id ? { ...it, message: streamed } : it
+              )
+            );
+          },
+          onTool: (event) => {
+            setItems((prev) =>
+              prev.map((it) =>
+                it.id === placeholder.id
+                  ? { ...it, tools: [...(it.tools ?? []), event] }
+                  : it
+              )
+            );
+          },
+        });
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === placeholder.id
+              ? { ...it, pending: false, message: streamed || "(no response)" }
+              : it
+          )
+        );
+      } catch {
+        const reply = await sendChat(message);
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === placeholder.id
+              ? { ...it, pending: false, message: reply.message }
+              : it
+          )
+        );
+      }
+    } catch (err) {
+      setError((err as Error).message);
+      setItems((prev) => prev.filter((it) => it.id !== placeholder.id));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={pageStyle}>
+      <header style={headerStyle}>
+        <h1 style={{ margin: 0, fontSize: 28 }}>Chat</h1>
+        <p style={{ margin: 0, color: "var(--text-muted)" }}>
+          에이전트와 대화하세요.
+        </p>
+      </header>
+
+      <section style={cardStyle}>
+        <div ref={listRef} style={listStyle}>
+          {items.length === 0 && (
+            <div style={{ color: "var(--text-faint)", textAlign: "center", padding: "30px 0" }}>
+              메시지를 입력해 대화를 시작해 보세요.
+            </div>
+          )}
+          {items.map((it) => (
+            <div key={it.id} style={rowStyle(it.role)}>
+              <div style={avatarStyle(it.role)} aria-label={it.role}>
+                {it.role === "user" ? <UserIcon /> : <AssistantIcon />}
+              </div>
+              <div style={bubbleStyle(it.role, !!it.pending)}>
+                {it.role === "assistant" && it.tools && it.tools.length > 0 && (
+                  <div style={toolListStyle}>
+                    {it.tools.map((evt, i) => (
+                      <ToolCallCard key={`${it.id}-tool-${i}`} event={evt} />
+                    ))}
+                  </div>
+                )}
+                {it.role === "assistant" ? (
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => (
+                        <span style={{ whiteSpace: "pre-wrap" }}>{children}</span>
+                      ),
+                      strong: ({ children }) => (
+                        <strong style={{ color: "var(--text)", fontWeight: 700 }}>{children}</strong>
+                      ),
+                    }}
+                  >
+                    {it.message || (it.pending ? "..." : "")}
+                  </ReactMarkdown>
+                ) : (
+                  it.message || ""
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {error && (
+          <div role="alert" style={{ color: "var(--danger, #ff7373)" }}>
+            {error}
+          </div>
+        )}
+
+        <form style={inputRow} onSubmit={onSubmit}>
+          <input
+            aria-label="메시지 입력"
+            style={inputStyle}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="에이전트에게 질문해 보세요"
+            disabled={busy}
+          />
+          <button type="submit" style={buttonStyle} disabled={busy || !input.trim()}>
+            전송
+          </button>
+        </form>
+      </section>
     </div>
   );
 }

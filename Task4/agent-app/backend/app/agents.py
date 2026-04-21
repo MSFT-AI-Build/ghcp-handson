@@ -8,11 +8,15 @@ from agent_framework import Agent
 from agent_framework.openai import OpenAIChatClient
 
 from .config import get_settings
+from .tools import ALL_TOOLS
 
 
 SUPERVISOR_INSTRUCTIONS = (
-    "You are the Supervisor Agent. Understand the user's request, "
-    "answer concisely, and coordinate work when needed."
+    "You are the Supervisor Agent. Understand the user's request and "
+    "answer concisely. Use the registered tools when helpful: call the "
+    "native `calculate` tool for arithmetic, and use the MCP bridge "
+    "tools `mcp_list_tools` then `mcp_call_tool` to interact with "
+    "configured MCP servers (notion, fileSystem, braveSearch)."
 )
 
 
@@ -33,6 +37,7 @@ def get_supervisor_agent() -> Agent:
         name="supervisor",
         client=client,
         instructions=SUPERVISOR_INSTRUCTIONS,
+        tools=list(ALL_TOOLS),
     )
 
 

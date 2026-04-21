@@ -29,8 +29,8 @@ describe("Settings -> Chat integration", () => {
         <ChatPage />
       </MemoryRouter>
     );
-    await user.type(screen.getByLabelText(/message/i), "ping");
-    await user.click(screen.getByRole("button", { name: /send/i }));
+    await user.type(screen.getByLabelText("메시지 입력"), "ping");
+    await user.click(screen.getByRole("button", { name: "전송" }));
 
     expect(await screen.findByText(/echo:\s+ping/)).toBeInTheDocument();
     expect(calls).toHaveLength(1);

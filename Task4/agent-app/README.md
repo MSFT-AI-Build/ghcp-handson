@@ -1,56 +1,48 @@
 # Agent System
 
-Frontend (React + Vite + TS) and backend (FastAPI + agent-framework) for a
-supervisor-agent chat system.
+Supervisor 에이전트(FastAPI + agent-framework) 백엔드와 React + Vite 프론트엔드로 구성된 데모.
 
-```
-agent-app/
-├── backend/   # FastAPI + Microsoft Agent Framework
-└── frontend/  # React 18 + TypeScript + Vite
-```
+## 디렉터리
 
-## Backend (Python 3.12)
+- `backend/` — FastAPI 앱, 에이전트, 도구(Native + MCP Bridge), 테스트
+- `frontend/` — React + TS + Vite UI (Chat / Agents / Settings)
 
+## 실행
+
+### Backend
 ```bash
-cd agent-app/backend
-python3.12 -m venv .venv
-source .venv/bin/activate
+cd backend
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # then fill in AZURE_OPENAI_* values
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+cp .env.example .env  # 필요한 값 채우기
+uvicorn app.main:app --reload
 ```
 
-### Backend tests
-
+### Frontend
 ```bash
-cd agent-app/backend
-pytest
-```
-
-External LLM calls are mocked via FastAPI dependency overrides, so tests
-run without Azure OpenAI credentials.
-
-## Frontend
-
-```bash
-cd agent-app/frontend
+cd frontend
 npm install
-npm run dev          # http://localhost:5173
+npm run dev
 ```
 
-### Frontend tests
+## 테스트
 
 ```bash
-cd agent-app/frontend
-npm test
+cd backend && pytest -q
+cd frontend && npm test -- --run
 ```
 
-API requests are mocked with MSW.
+테스트는 LLM(Azure OpenAI) 및 MCP 서버를 모두 **목(mock)** 으로 대체하므로 외부 서비스나 실제 MCP 서버 프로세스 없이 로컬에서 실행 가능합니다.
 
 ## Configuration
 
-Backend reads `AZURE_OPENAI_KEY`, `AZURE_OPENAI_ENDPOINT`, and
-`AZURE_OPENAI_DEPLOYMENT` from `agent-app/backend/.env`.
+- `backend/.env` — Azure OpenAI 등 자격 증명 (`.env.example` 참고)
+- `backend/mcp_servers/mcp_config.json` — MCP 서버 정의. 기본 항목:
+  - `notion` (`@notionhq/notion-mcp-server`, stdio) — `NOTION_TOKEN` 필요
+  - `fileSystem` (`@modelcontextprotocol/server-filesystem`, stdio)
+  - `braveSearch` (`@brave/brave-search-mcp-server`, http transport) — `BRAVE_API_KEY` 필요
 
-The frontend defaults to `http://localhost:8000` for the backend; override it
-on the **Settings** page or by setting `VITE_API_BASE` at build time.
+## 도구
+
+- **Native Tool**: `calculate` (안전한 산술 평가)
+- **MCP Bridge Tool**: `mcp_list_tools`, `mcp_call_tool` — 위 MCP 서버에 대해 `tools/list`·`tools/call` 중계

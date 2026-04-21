@@ -25,13 +25,52 @@ export async function sendChat(message: string): Promise<ChatMessage> {
 
 export type StreamHandlers = {
   onDelta: (text: string) => void;
+  onTool?: (event: ToolEvent) => void;
   onDone?: () => void;
   signal?: AbortSignal;
 };
 
+export type ToolEvent = {
+  name: string;
+  type?: string;
+  server?: string;
+  arguments?: Record<string, unknown>;
+  result?: unknown;
+};
+
+export type ToolSpec = {
+  name: string;
+  type: string;
+  description: string;
+  status: string;
+};
+
+export type McpServerInfo = {
+  name: string;
+  transport: string;
+  command?: string;
+  args?: string[];
+  status: string;
+  tools: { name: string; description?: string }[];
+};
+
+export type ToolsOverview = {
+  tools: ToolSpec[];
+  mcp_servers: McpServerInfo[];
+};
+
+export async function fetchTools(): Promise<ToolsOverview> {
+  const base = resolveApiBase();
+  const res = await fetch(`${base}/api/tools`);
+  if (!res.ok) {
+    throw new Error(`Failed to load tools (${res.status})`);
+  }
+  return (await res.json()) as ToolsOverview;
+}
+
 export async function streamChat(
   message: string,
-  { onDelta, onDone, signal }: StreamHandlers
+  { onDelta, onTool, onDone, signal }: StreamHandlers
 ): Promise<void> {
   const base = resolveApiBase();
   const res = await fetch(`${base}/api/chat/stream`, {
@@ -62,6 +101,8 @@ export async function streamChat(
       if (!evt) continue;
       if (evt.event === "delta" && typeof evt.data?.text === "string") {
         onDelta(evt.data.text);
+      } else if (evt.event === "tool" && evt.data?.name) {
+        onTool?.(evt.data as ToolEvent);
       } else if (evt.event === "error") {
         throw new Error(evt.data?.detail ?? "stream error");
       } else if (evt.event === "done") {

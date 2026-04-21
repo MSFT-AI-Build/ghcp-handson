@@ -4,6 +4,7 @@ pydantic
 pydantic-settings
 python-dotenv
 agent-framework==1.0.1
+mcp
 httpx
 pytest
 pytest-asyncio
