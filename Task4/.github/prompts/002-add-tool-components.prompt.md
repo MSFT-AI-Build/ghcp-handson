@@ -17,7 +17,7 @@ User ──► Chat UI ──► REST API Server
            - ...                    │
                          ┌──────────┼──────────┐
                          ▼          ▼          ▼
-                    Google Search  Notion    File System
+                    Brave Search  Notion    File System
                     MCP Server    MCP Server MCP Server
 
 ./agent_work_dirs/
@@ -87,10 +87,11 @@ MCP 서버 연결 정보는 하나의 JSON 파일로 관리한다. 각 서버에
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "./"]
     },
-    "googleSearch": {
-      "command": "noapi-google-search-mcp",
+    "braveSearch": {
+      "command": "npx",
+      "args": ["-y", "@brave/brave-search-mcp-server", "--transport", "stdio"],
       "env": {
-        "PYTHONUNBUFFERED": "1"
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
       }
     }
   }
@@ -113,6 +114,7 @@ MCP 서버 연결 정보는 하나의 JSON 파일로 관리한다. 각 서버에
 - SSE transport: `sse_client` 로 HTTP SSE 연결을 관리
 - MCP Client 는 서버 lifecycle (초기화 → tool 목록 조회 → tool 호출 → 종료) 을 관리한다.
 - MCP 서버가 비정상 종료된 경우 자동 재시작을 시도한다.
+- .env 파일에서 MCP 서버별 필요한 환경변수 (예: NOTION_TOKEN, BRAVE_API_KEY) 가 로드되어 MCP Client 에 전달되도록 한다.
 
 ## MCP Tool 호출 흐름 (Agent 관점)
 1. Agent 가 MCP 도구를 사용하고 싶을 때 먼저 `mcp_list_tools()` 을 호출한다.
@@ -126,12 +128,12 @@ MCP 서버 연결 정보는 하나의 JSON 파일로 관리한다. 각 서버에
 MCP 서버들은 프로세스 initialization 시 `mcp_config.json` 에 정의된 명령어로 실행한다.
 기본적으로 아래 MCP 서버들을 지원한다:
 - **File System**: https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem
-- **NoAPI Google Search MCP**: https://github.com/VincentKaufmann/noapi-google-search-mcp
+- **Brave Search MCP**: https://github.com/brave/brave-search-mcp-server
 - **Notion MCP Server**: https://github.com/makenotion/notion-mcp-server
+필요한 환경변수 BRAVE_API_KEY/NOTION_TOKEN 는 `.env` 파일에서 관리한다.
 
 ## 필요 패키지
-- 이외 MCP 서버별로 필요한 패키지 (예: Notion API 클라이언트, Google Search API 클라이언트 등) 가 있으면 requirements.txt 에 추가한다.
-- **NoAPI Google Search MCP** 의 경우 playwright 와 chromium (`playwright install chromium`) 설치가 필요하다.
+- 이외 MCP 서버별로 필요한 패키지 (예: Notion API 클라이언트, Brave Search 클라이언트 등) 가 있으면 requirements.txt 에 추가한다.
 
 # Frontend
 
