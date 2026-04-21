@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-dotenv
+agent-framework==1.0.1
+httpx
+pytest
+pytest-asyncio
