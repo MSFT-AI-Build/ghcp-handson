@@ -20,10 +20,20 @@ logger = logging.getLogger(__name__)
 WORK_DIRS_ROOT = Path("agent_work_dirs")
 
 
-def ensure_agent_work_dir(agent_id: str, work_dirs_root: Path | None = None) -> Path:
-    """Create ``{root}/{agent_id}/`` with default AGENT.md and MEMORY.md.
+def ensure_agent_work_dir(
+    agent_id: str,
+    work_dirs_root: Path | None = None,
+    *,
+    role: str | None = None,
+    instructions: str | None = None,
+    capabilities: list[str] | None = None,
+    overwrite_agent_md: bool = False,
+) -> Path:
+    """Create ``{root}/{agent_id}/`` with AGENT.md and MEMORY.md.
 
-    Idempotent – existing files are not overwritten.
+    Idempotent – existing files are not overwritten unless
+    ``overwrite_agent_md=True`` is passed (used when a Worker is (re)assigned a
+    new role/instructions by the Supervisor).
 
     Returns the agent's work directory path.
     """
@@ -31,35 +41,67 @@ def ensure_agent_work_dir(agent_id: str, work_dirs_root: Path | None = None) -> 
     agent_dir = root / agent_id
     agent_dir.mkdir(parents=True, exist_ok=True)
 
-    _init_agent_md(agent_dir, agent_id)
+    _init_agent_md(
+        agent_dir,
+        agent_id,
+        role=role,
+        instructions=instructions,
+        capabilities=capabilities,
+        overwrite=overwrite_agent_md,
+    )
     _init_memory_md(agent_dir)
 
     logger.debug("Agent work directory ready: %s", agent_dir)
     return agent_dir
 
 
-def _init_agent_md(agent_dir: Path, agent_id: str) -> None:
+def _init_agent_md(
+    agent_dir: Path,
+    agent_id: str,
+    *,
+    role: str | None = None,
+    instructions: str | None = None,
+    capabilities: list[str] | None = None,
+    overwrite: bool = False,
+) -> None:
     path = agent_dir / "AGENT.md"
-    if path.exists():
+    if path.exists() and not overwrite:
         return
-    path.write_text(
-        textwrap.dedent(f"""\
-        # Agent: {agent_id}
+    if role is None and instructions is None and capabilities is None:
+        # Default supervisor template (back-compat).
+        body = textwrap.dedent(f"""\
+            # Agent: {agent_id}
 
-        ## Role
-        Supervisor Agent – orchestrates tools and MCP servers to fulfil user requests.
+            ## Role
+            Supervisor Agent – orchestrates tools and delegates work to Worker
+            Agents to fulfil user requests.
 
-        ## Capabilities
-        - Native tools: `calculate`
-        - MCP bridge tools: `mcp_list_tools`, `mcp_call_tool`
-        - MCP servers: fileSystem, notion, braveSearch
+            ## Capabilities
+            - Native delegation tools: `delegate_task`, `check_workers`, `cancel_worker`
 
-        ## Memory
-        Use `MEMORY.md` in this directory to persist important information across
-        conversations (read via `mcp_call_tool` with server=fileSystem, tool=read_file).
-        """),
-        encoding="utf-8",
-    )
+            ## Memory
+            Use `MEMORY.md` in this directory to persist important information
+            across conversations.
+            """)
+    else:
+        cap_lines = "\n".join(f"- {c}" for c in (capabilities or [])) or "- (none)"
+        body = textwrap.dedent(f"""\
+            # Agent: {agent_id}
+
+            ## Role
+            {role or "(unspecified)"}
+
+            ## Instructions
+            {instructions or "(none)"}
+
+            ## Capabilities
+            {cap_lines}
+
+            ## Memory
+            Use `MEMORY.md` in this directory to persist important information
+            via the File System MCP server.
+            """)
+    path.write_text(body, encoding="utf-8")
 
 
 def _init_memory_md(agent_dir: Path) -> None:

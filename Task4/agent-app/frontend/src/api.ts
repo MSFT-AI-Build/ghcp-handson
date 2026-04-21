@@ -26,6 +26,8 @@ export async function sendChat(message: string): Promise<ChatMessage> {
 export type StreamHandlers = {
   onDelta: (text: string) => void;
   onTool?: (event: ToolEvent) => void;
+  onWorker?: (event: WorkerEvent) => void;
+  onWorkerTool?: (event: WorkerToolEvent) => void;
   onDone?: () => void;
   signal?: AbortSignal;
 };
@@ -36,6 +38,30 @@ export type ToolEvent = {
   server?: string;
   arguments?: Record<string, unknown>;
   result?: unknown;
+};
+
+export type WorkerStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export type WorkerEvent = {
+  id: string;
+  role: string;
+  task: string;
+  status: WorkerStatus;
+  instructions?: string;
+  work_dir?: string | null;
+  result?: string | null;
+  error?: string | null;
+};
+
+/** A tool call made by a Worker agent, enriched with worker identity. */
+export type WorkerToolEvent = ToolEvent & {
+  worker_id: string;
+  worker_role?: string;
 };
 
 export type ToolSpec = {
@@ -68,9 +94,30 @@ export async function fetchTools(): Promise<ToolsOverview> {
   return (await res.json()) as ToolsOverview;
 }
 
+export type AgentInfo = {
+  id: string;
+  role: string;
+  work_dir: string;
+  tools: string[];
+};
+
+export type AgentsOverview = {
+  supervisor: AgentInfo;
+  workers: AgentInfo[];
+};
+
+export async function fetchAgents(): Promise<AgentsOverview> {
+  const base = resolveApiBase();
+  const res = await fetch(`${base}/api/agents`);
+  if (!res.ok) {
+    throw new Error(`Failed to load agents (${res.status})`);
+  }
+  return (await res.json()) as AgentsOverview;
+}
+
 export async function streamChat(
   message: string,
-  { onDelta, onTool, onDone, signal }: StreamHandlers
+  { onDelta, onTool, onWorker, onWorkerTool, onDone, signal }: StreamHandlers
 ): Promise<void> {
   const base = resolveApiBase();
   const res = await fetch(`${base}/api/chat/stream`, {
@@ -103,6 +150,10 @@ export async function streamChat(
         onDelta(evt.data.text);
       } else if (evt.event === "tool" && evt.data?.name) {
         onTool?.(evt.data as ToolEvent);
+      } else if (evt.event === "worker" && evt.data?.id) {
+        onWorker?.(evt.data as WorkerEvent);
+      } else if (evt.event === "worker_tool" && evt.data?.name) {
+        onWorkerTool?.(evt.data as WorkerToolEvent);
       } else if (evt.event === "error") {
         throw new Error(evt.data?.detail ?? "stream error");
       } else if (evt.event === "done") {

@@ -34,6 +34,14 @@ describe("AgentsPage", () => {
     expect(within(brave).getByText(/error/i)).toBeInTheDocument();
   });
 
+  it("renders the supervisor agent card and empty workers placeholder", async () => {
+    renderPage();
+    const supervisor = await screen.findByTestId("agent-supervisor");
+    expect(within(supervisor).getByText("Supervisor Agent")).toBeInTheDocument();
+    expect(within(supervisor).getByText(/delegate_task/)).toBeInTheDocument();
+    expect(screen.getByTestId("no-active-workers")).toBeInTheDocument();
+  });
+
   it("shows an error when the tools endpoint fails", async () => {
     server.use(
       http.get("*/api/tools", () =>
@@ -42,6 +50,6 @@ describe("AgentsPage", () => {
     );
     renderPage();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/도구 목록/);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/정보를 불러오지/);
   });
 });

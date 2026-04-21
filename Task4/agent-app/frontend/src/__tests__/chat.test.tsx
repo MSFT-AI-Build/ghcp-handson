@@ -110,4 +110,121 @@ describe("ChatPage", () => {
       within(event).queryByTestId("tool-event-details")
     ).not.toBeInTheDocument();
   });
+
+  it("renders worker delegation status transitions", async () => {
+    const user = userEvent.setup();
+    const worker = {
+      id: "worker-abc",
+      role: "Researcher",
+      task: "find latest news",
+      instructions: "search and summarize",
+    };
+    setNextStreamPlan([
+      { kind: "worker", data: { ...worker, status: "pending" } },
+      { kind: "worker", data: { ...worker, status: "running" } },
+      { kind: "delta", text: "결과를 정리했습니다." },
+      {
+        kind: "worker",
+        data: { ...worker, status: "completed", result: "AI trends report" },
+      },
+    ]);
+    renderPage();
+
+    await user.type(screen.getByLabelText("메시지 입력"), "research");
+    await user.click(screen.getByRole("button", { name: "전송" }));
+
+    const card = await screen.findByTestId("worker-event");
+    expect(within(card).getByText(/Worker · Researcher/)).toBeInTheDocument();
+    expect(within(card).getByText(/find latest news/)).toBeInTheDocument();
+    // Final status badge reflects completion (the same card was updated in place).
+    expect(await within(card).findByText(/completed/i)).toBeInTheDocument();
+    // Result is hidden behind toggle by default.
+    expect(within(card).queryByTestId("worker-result")).not.toBeInTheDocument();
+    // Click the toggle to reveal the result.
+    await user.click(within(card).getByRole("button"));
+    expect(within(card).getByTestId("worker-result")).toBeInTheDocument();
+    expect(within(card).getByText(/AI trends report/)).toBeInTheDocument();
+    // Only one worker card (id-based deduplication)
+    expect(screen.getAllByTestId("worker-event")).toHaveLength(1);
+  });
+
+  it("renders worker tool events in arrival order", async () => {
+    const user = userEvent.setup();
+    const worker = {
+      id: "worker-xyz",
+      role: "Researcher",
+      task: "search news",
+      instructions: "search and summarize",
+    };
+    setNextStreamPlan([
+      { kind: "worker", data: { ...worker, status: "pending" } },
+      { kind: "worker", data: { ...worker, status: "running" } },
+      {
+        kind: "worker_tool",
+        data: {
+          type: "worker_tool",
+          worker_id: "worker-xyz",
+          worker_role: "Researcher",
+          name: "search",
+          server: "braveSearch",
+          arguments: { query: "AI news" },
+        },
+      },
+      {
+        kind: "worker",
+        data: { ...worker, status: "completed", result: "AI trends" },
+      },
+      { kind: "delta", text: "완료" },
+    ]);
+    renderPage();
+
+    await user.type(screen.getByLabelText("메시지 입력"), "news");
+    await user.click(screen.getByRole("button", { name: "전송" }));
+
+    // Worker tool card should appear with correct label
+    const workerToolCard = await screen.findByTestId("worker-tool-event");
+    expect(
+      within(workerToolCard).getByText(/Worker\(Researcher\) · MCP · braveSearch → search/)
+    ).toBeInTheDocument();
+
+    // Worker status card should still be present (updated in-place to completed)
+    const workerCard = screen.getByTestId("worker-event");
+    expect(within(workerCard).getByText(/completed/i)).toBeInTheDocument();
+
+    // Order: worker card appears before worker_tool in the DOM
+    const allCards = screen.getAllByTestId(/worker-event|worker-tool-event/);
+    expect(allCards[0]).toHaveAttribute("data-testid", "worker-event");
+    expect(allCards[1]).toHaveAttribute("data-testid", "worker-tool-event");
+  });
+
+  it("renders failed worker error message", async () => {
+    const user = userEvent.setup();
+    setNextStreamPlan([
+      {
+        kind: "worker",
+        data: {
+          id: "worker-bad",
+          role: "Coder",
+          task: "compile",
+          instructions: "build",
+          status: "failed",
+          error: "compile error",
+        },
+      },
+      { kind: "delta", text: "실패" },
+    ]);
+    renderPage();
+
+    await user.type(screen.getByLabelText("메시지 입력"), "build");
+    await user.click(screen.getByRole("button", { name: "전송" }));
+
+    const card = await screen.findByTestId("worker-event");
+    expect(within(card).getByText(/failed/i)).toBeInTheDocument();
+    // Error is hidden behind toggle by default.
+    expect(within(card).queryByTestId("worker-error")).not.toBeInTheDocument();
+    // Click toggle to reveal the error.
+    await user.click(within(card).getByRole("button"));
+    expect(within(card).getByTestId("worker-error")).toBeInTheDocument();
+    expect(within(card).getByText(/compile error/)).toBeInTheDocument();
+  });
 });

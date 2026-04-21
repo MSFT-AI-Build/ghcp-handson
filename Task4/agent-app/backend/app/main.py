@@ -1,6 +1,7 @@
 """FastAPI application entrypoint."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from contextlib import asynccontextmanager
@@ -10,10 +11,26 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from .agents import get_supervisor_agent
+from .agents import (
+    AGENT_ID,
+    SUPERVISOR_INSTRUCTIONS,
+    append_supervisor_memory,
+    build_worker_agent,
+    extract_memory_saves,
+    get_supervisor_agent,
+    inject_memory_into_message,
+    load_supervisor_memory,
+)
 from .mcp_client import get_mcp_manager
 from .schemas import ChatRequest, ChatResponse, HealthResponse
-from .tools import build_tools_overview
+from .tool_events import ToolEventAggregator, normalize_mcp_bridge
+from .tools import (
+    build_tools_overview,
+    reset_active_worker_manager,
+    set_active_worker_manager,
+)
+from .work_dir import WORK_DIRS_ROOT
+from .worker_manager import WorkerManager
 
 logger = logging.getLogger(__name__)
 
@@ -49,16 +66,44 @@ def create_app() -> FastAPI:
     async def list_tools() -> dict:
         return build_tools_overview()
 
+    @app.get("/api/agents")
+    async def list_agents() -> dict:
+        return {
+            "supervisor": {
+                "id": AGENT_ID,
+                "role": "Supervisor Agent",
+                "work_dir": str(WORK_DIRS_ROOT / AGENT_ID),
+                "tools": ["delegate_task", "check_workers", "cancel_worker"],
+            },
+            # Workers are short-lived (per request); their snapshots are
+            # streamed live over /api/chat/stream as ``event: worker``.
+            "workers": [],
+        }
+
     @app.post("/api/chat", response_model=ChatResponse)
     async def chat(
         payload: ChatRequest,
         agent=Depends(get_supervisor_agent),
     ) -> ChatResponse:
+        manager = WorkerManager(worker_factory=build_worker_agent)
+        token = set_active_worker_manager(manager)
         try:
-            result = await agent.run(payload.message)
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
-        return ChatResponse(message=_extract_text(result))
+            memory = load_supervisor_memory()
+            user_msg = inject_memory_into_message(payload.message, memory)
+            try:
+                result = await agent.run(user_msg)
+            except Exception as exc:  # noqa: BLE001
+                raise HTTPException(status_code=502, detail=str(exc)) from exc
+            text = _extract_text(result)
+            visible, saves = extract_memory_saves(text)
+            if saves:
+                try:
+                    append_supervisor_memory(saves)
+                except OSError as exc:
+                    logger.warning("Failed to persist supervisor memory: %s", exc)
+            return ChatResponse(message=visible)
+        finally:
+            reset_active_worker_manager(token)
 
     @app.post("/api/chat/stream")
     async def chat_stream(
@@ -80,6 +125,17 @@ def create_app() -> FastAPI:
 
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+# Sentinel object used to signal the SSE output queue that streaming is done.
+_SSE_DONE_SENTINEL: object = object()
+
+
+class _ToolEventAggregator(ToolEventAggregator):
+    """Backwards-compat alias kept so existing tests that reference the private
+    name continue to work.  New code should import ``ToolEventAggregator``
+    from ``.tool_events`` directly.
+    """
 
 
 class _ToolEventAggregator:
@@ -187,43 +243,116 @@ class _ToolEventAggregator:
 
 
 async def _sse_stream(agent: object, message: str) -> AsyncIterator[str]:
-    """Yield SSE events streaming agent updates as text deltas + tool events."""
+    """Yield SSE events streaming agent updates as text deltas + tool/worker events.
+
+    A background *pump_workers* task runs concurrently with the main agent
+    stream so that worker status transitions (pending → running → completed)
+    are forwarded to the client in real-time, even while ``delegate_task``
+    is blocking the agent stream awaiting a worker result.
+    """
     aggregator = _ToolEventAggregator()
+    worker_manager = WorkerManager(worker_factory=build_worker_agent)
+    token = set_active_worker_manager(worker_manager)
+    full_text_chunks: list[str] = []
     tool_count = 0
-    try:
-        stream = agent.run(message, stream=True)  # type: ignore[attr-defined]
-        async for update in stream:
-            for event in aggregator.consume(update):
+    error_occurred = False
+
+    # Shared output queue written by both run_main and pump_workers.
+    out: asyncio.Queue[object] = asyncio.Queue()
+    main_done = asyncio.Event()
+
+    async def run_main() -> None:
+        nonlocal tool_count, error_occurred
+        try:
+            memory = load_supervisor_memory()
+            user_msg = inject_memory_into_message(message, memory)
+            stream = agent.run(user_msg, stream=True)  # type: ignore[attr-defined]
+            async for update in stream:
+                for event in aggregator.consume(update):
+                    tool_count += 1
+                    logger.info(
+                        "tool event #%d -> %s/%s",
+                        tool_count,
+                        event.get("server") or "native",
+                        event.get("name"),
+                    )
+                    await out.put(_sse("tool", event))
+                delta = _extract_text(update)
+                if delta:
+                    full_text_chunks.append(delta)
+                    await out.put(_sse("delta", {"text": delta}))
+            for event in aggregator.flush():
                 tool_count += 1
-                logger.info(
-                    "tool event #%d -> %s/%s",
-                    tool_count,
-                    event.get("server") or "native",
-                    event.get("name"),
-                )
-                yield _sse("tool", event)
-            delta = _extract_text(update)
-            if delta:
-                yield _sse("delta", {"text": delta})
-        for event in aggregator.flush():
-            tool_count += 1
-            logger.info(
-                "tool event (flush) #%d -> %s/%s",
-                tool_count,
-                event.get("server") or "native",
-                event.get("name"),
-            )
-            yield _sse("tool", event)
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("stream failed")
-        yield _sse("error", {"detail": str(exc)})
+                await out.put(_sse("tool", event))
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("stream failed")
+            await out.put(_sse("error", {"detail": str(exc)}))
+            error_occurred = True
+        finally:
+            main_done.set()
+
+    async def pump_workers() -> None:
+        """Forward worker events to the output queue until main stream is done.
+
+        Runs concurrently with *run_main* so that pending→running→completed
+        status transitions reach the client while ``delegate_task`` is still
+        blocking the agent loop awaiting the worker result.
+
+        Worker tool-call events (``type == "worker_tool"``) are forwarded as
+        ``event: worker_tool`` SSE frames so the client can render them
+        separately from worker status cards.
+        """
+        while True:
+            if main_done.is_set():
+                # Main stream finished — drain any remaining events and stop.
+                for w_evt in worker_manager.drain_events():
+                    sse_type = "worker_tool" if w_evt.get("type") == "worker_tool" else "worker"
+                    await out.put(_sse(sse_type, w_evt))
+                break
+            w_evt = await worker_manager.next_event(timeout=0.05)
+            if w_evt is not None:
+                sse_type = "worker_tool" if w_evt.get("type") == "worker_tool" else "worker"
+                await out.put(_sse(sse_type, w_evt))
+        await out.put(_SSE_DONE_SENTINEL)
+
+    main_task = asyncio.create_task(run_main())
+    pump_task = asyncio.create_task(pump_workers())
+
+    try:
+        while True:
+            item = await out.get()
+            if item is _SSE_DONE_SENTINEL:
+                break
+            yield item  # type: ignore[misc]
+    finally:
+        # Cancel background tasks (no-op if they already completed normally).
+        main_task.cancel()
+        pump_task.cancel()
+        reset_active_worker_manager(token)
+        await asyncio.gather(main_task, pump_task, return_exceptions=True)
+
+    if error_occurred:
         return
+
+    # Persist any [MEMORY_SAVE] markers from the accumulated assistant text.
+    full_text = "".join(full_text_chunks)
+    _, saves = extract_memory_saves(full_text)
+    if saves:
+        try:
+            append_supervisor_memory(saves)
+        except OSError as exc:
+            logger.warning("Failed to persist supervisor memory: %s", exc)
     logger.info("stream finished, %d tool event(s) emitted", tool_count)
     yield _sse("done", {})
 
 
 def _stringify(value: object) -> object:
-    """Render tool results in a UI-friendly way without losing structure."""
+    """Render tool results in a UI-friendly way without losing structure.
+
+    Kept here for backwards-compatibility with any callers that import it from
+    this module.  New code should use ``tool_events._stringify`` directly via
+    the aggregator.
+    """
     if value is None:
         return None
     if isinstance(value, (str, int, float, bool)):
@@ -232,7 +361,6 @@ def _stringify(value: object) -> object:
         return [_stringify(v) for v in value]
     if isinstance(value, dict):
         return {str(k): _stringify(v) for k, v in value.items()}
-    # MCP CallToolResult / dataclass-ish objects: try common attrs.
     for attr in ("text", "value", "output"):
         v = getattr(value, attr, None)
         if v is not None:
@@ -242,36 +370,12 @@ def _stringify(value: object) -> object:
 
 def _extract_tool_events(update: object) -> list[dict]:
     """Backwards-compatible single-shot extractor used by tests."""
-    return _ToolEventAggregator().consume(update)
+    return ToolEventAggregator().consume(update)
 
 
 def _normalize_mcp_bridge(event: dict) -> dict:
-    """If the event is a call to ``mcp_call_tool``, surface server/tool from arguments."""
-    if event.get("name") != "mcp_call_tool":
-        return event
-    args = event.get("arguments")
-    parsed: dict | None = None
-    if isinstance(args, dict):
-        parsed = args
-    elif isinstance(args, str):
-        try:
-            parsed = json.loads(args)
-        except (ValueError, TypeError):
-            parsed = None
-    if not isinstance(parsed, dict):
-        return event
-    server = parsed.get("server")
-    tool = parsed.get("tool") or parsed.get("name")
-    if not (server and tool):
-        return event
-    inner_args = parsed.get("arguments")
-    return {
-        "name": tool,
-        "type": "mcp",
-        "server": server,
-        "arguments": inner_args,
-        "result": event.get("result"),
-    }
+    """Backwards-compat shim; delegates to the shared implementation."""
+    return normalize_mcp_bridge(event)
 
 
 def _extract_text(result: object) -> str:

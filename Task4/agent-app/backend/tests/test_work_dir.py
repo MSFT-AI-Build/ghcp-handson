@@ -231,8 +231,9 @@ class TestSupervisorAgentWorkDir:
         reset_supervisor_agent()
 
     def test_memory_instructions_in_system_prompt(self) -> None:
+        """Supervisor prompt explains the [MEMORY_SAVE] backend-managed flow."""
         from app.agents import SUPERVISOR_INSTRUCTIONS, AGENT_ID
         assert "MEMORY.md" in SUPERVISOR_INSTRUCTIONS
-        assert "read_file" in SUPERVISOR_INSTRUCTIONS
-        assert "write_file" in SUPERVISOR_INSTRUCTIONS
-        assert AGENT_ID in SUPERVISOR_INSTRUCTIONS
+        assert "[MEMORY_SAVE]" in SUPERVISOR_INSTRUCTIONS
+        assert "[/MEMORY_SAVE]" in SUPERVISOR_INSTRUCTIONS
+        assert AGENT_ID == "supervisor"

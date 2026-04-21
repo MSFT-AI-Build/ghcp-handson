@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { fetchTools, type McpServerInfo, type ToolSpec, type ToolsOverview } from "../api";
+import {
+  fetchAgents,
+  fetchTools,
+  type AgentInfo,
+  type AgentsOverview,
+  type McpServerInfo,
+  type ToolSpec,
+  type ToolsOverview,
+} from "../api";
 
 const pageStyle: React.CSSProperties = {
   maxWidth: 980,
@@ -95,13 +103,17 @@ function McpServerCard({ srv }: { srv: McpServerInfo }) {
 
 export default function AgentsPage() {
   const [data, setData] = useState<ToolsOverview | null>(null);
+  const [agents, setAgents] = useState<AgentsOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetchTools()
-      .then((d) => {
-        if (!cancelled) setData(d);
+    Promise.all([fetchTools(), fetchAgents()])
+      .then(([tools, ags]) => {
+        if (!cancelled) {
+          setData(tools);
+          setAgents(ags);
+        }
       })
       .catch((e: Error) => {
         if (!cancelled) setError(e.message);
@@ -116,14 +128,40 @@ export default function AgentsPage() {
       <header>
         <h1 style={{ margin: 0, fontSize: 28 }}>Agents</h1>
         <p style={{ margin: "4px 0 0", color: "var(--text-muted)" }}>
-          등록된 도구와 MCP 서버 상태를 확인하세요.
+          등록된 에이전트, 도구, MCP 서버 상태를 확인하세요.
         </p>
       </header>
 
       {error && (
         <div role="alert" style={{ color: "var(--danger, #ff7373)" }}>
-          도구 목록을 불러오지 못했습니다: {error}
+          정보를 불러오지 못했습니다: {error}
         </div>
+      )}
+
+      {agents && (
+        <section style={sectionStyle}>
+          <h2 style={{ margin: 0, fontSize: 18 }}>Active Agents</h2>
+          <div style={gridStyle}>
+            <AgentCard agent={agents.supervisor} kind="supervisor" />
+            {agents.workers.map((w) => (
+              <AgentCard key={w.id} agent={w} kind="worker" />
+            ))}
+            {agents.workers.length === 0 && (
+              <div
+                data-testid="no-active-workers"
+                style={{
+                  color: "var(--text-faint)",
+                  fontSize: 13,
+                  border: "1px dashed var(--border)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "var(--space-md)",
+                }}
+              >
+                활성 Worker 가 없습니다. Chat 에서 작업을 위임하면 여기에 표시됩니다.
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       <section style={sectionStyle}>
@@ -143,6 +181,34 @@ export default function AgentsPage() {
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+function AgentCard({
+  agent,
+  kind,
+}: {
+  agent: AgentInfo;
+  kind: "supervisor" | "worker";
+}) {
+  return (
+    <div style={cardStyle} data-testid={`agent-${agent.id}`}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <strong>{agent.id}</strong>
+        <span style={badgeStyle(kind === "supervisor" ? "active" : "connected")}>
+          {kind}
+        </span>
+      </div>
+      <div style={{ color: "var(--text-muted)", fontSize: 13 }}>{agent.role}</div>
+      <div style={{ color: "var(--text-faint)", fontSize: 12 }}>
+        work_dir: <code>{agent.work_dir}</code>
+      </div>
+      {agent.tools && agent.tools.length > 0 && (
+        <div style={{ color: "var(--text-muted)", fontSize: 12 }}>
+          tools: {agent.tools.join(", ")}
+        </div>
+      )}
     </div>
   );
 }

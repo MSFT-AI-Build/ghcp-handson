@@ -5,7 +5,9 @@ export const calls: { url: string; body: unknown }[] = [];
 
 export type StreamPlanItem =
   | { kind: "delta"; text: string }
-  | { kind: "tool"; data: Record<string, unknown> };
+  | { kind: "tool"; data: Record<string, unknown> }
+  | { kind: "worker"; data: Record<string, unknown> }
+  | { kind: "worker_tool"; data: Record<string, unknown> };
 
 export type StreamPlan = StreamPlanItem[];
 
@@ -26,10 +28,22 @@ function sseStream(items: StreamPlanItem[]): ReadableStream<Uint8Array> {
               `event: delta\ndata: ${JSON.stringify({ text: item.text })}\n\n`
             )
           );
-        } else {
+        } else if (item.kind === "tool") {
           controller.enqueue(
             encoder.encode(
               `event: tool\ndata: ${JSON.stringify(item.data)}\n\n`
+            )
+          );
+        } else if (item.kind === "worker_tool") {
+          controller.enqueue(
+            encoder.encode(
+              `event: worker_tool\ndata: ${JSON.stringify(item.data)}\n\n`
+            )
+          );
+        } else {
+          controller.enqueue(
+            encoder.encode(
+              `event: worker\ndata: ${JSON.stringify(item.data)}\n\n`
             )
           );
         }
@@ -89,6 +103,16 @@ export const toolsResponse = {
   ],
 };
 
+export const agentsResponse = {
+  supervisor: {
+    id: "supervisor",
+    role: "Supervisor Agent",
+    work_dir: "agent_work_dirs/supervisor",
+    tools: ["delegate_task", "check_workers", "cancel_worker"],
+  },
+  workers: [],
+};
+
 export const server = setupServer(
   http.post("*/api/chat/stream", async ({ request }) => {
     const body = (await request.json()) as { message?: string };
@@ -113,5 +137,6 @@ export const server = setupServer(
     const message = (body as { message?: string })?.message ?? "";
     return HttpResponse.json({ role: "assistant", message: `echo: ${message}` });
   }),
-  http.get("*/api/tools", () => HttpResponse.json(toolsResponse))
+  http.get("*/api/tools", () => HttpResponse.json(toolsResponse)),
+  http.get("*/api/agents", () => HttpResponse.json(agentsResponse))
 );

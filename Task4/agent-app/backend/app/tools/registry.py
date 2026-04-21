@@ -7,8 +7,28 @@ from ..mcp_client import get_mcp_manager
 
 
 def native_tool_specs() -> list[dict[str, Any]]:
-    """Return display specs for tools registered directly with the agent."""
+    """Return display specs for tools registered directly with agents."""
     return [
+        # Supervisor-only delegation tools
+        {
+            "name": "delegate_task",
+            "type": "supervisor",
+            "description": "Spawn a Worker Agent with a custom role and assign a task.",
+            "status": "active",
+        },
+        {
+            "name": "check_workers",
+            "type": "supervisor",
+            "description": "List active Worker Agents and their statuses.",
+            "status": "active",
+        },
+        {
+            "name": "cancel_worker",
+            "type": "supervisor",
+            "description": "Cancel a running Worker Agent by id.",
+            "status": "active",
+        },
+        # Worker-side tools
         {
             "name": "calculate",
             "type": "native",
@@ -18,7 +38,7 @@ def native_tool_specs() -> list[dict[str, Any]]:
         {
             "name": "mcp_list_tools",
             "type": "native",
-            "description": "List tools exposed by a configured MCP server.",
+            "description": "List tools exposed by every configured MCP server.",
             "status": "active",
         },
         {
