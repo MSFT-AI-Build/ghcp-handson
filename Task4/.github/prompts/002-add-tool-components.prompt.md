@@ -30,7 +30,7 @@ User ──► Chat UI ──► REST API Server
    Agent ──tool_call──► calculate(expression="1+2") ──► 결과 반환
 
 2) MCP Tool 호출 (2단계)
-   Agent ──tool_call──► mcp_list_tools(server="notion")
+   Agent ──tool_call──► mcp_list_tools()
                          └─► MCP 서버에 tools/list 요청
                          └─► tool 목록 + input schema 반환
 
@@ -58,7 +58,7 @@ User ──► Chat UI ──► REST API Server
 
 Agent 에 등록되는 두 개의 Native Tool 로, MCP 서버와의 통신을 중개한다.
 
-### `mcp_list_tools(server: str) -> list`
+### `mcp_list_tools() -> list`
 - 지정된 MCP 서버에 `tools/list` 요청을 보내 사용 가능한 tool 목록과 각 tool 의 input schema 를 반환
 - Agent 는 이 결과를 보고 어떤 MCP tool 을 호출할지, 어떤 arguments 를 넘길지 결정
 
@@ -115,7 +115,7 @@ MCP 서버 연결 정보는 하나의 JSON 파일로 관리한다. 각 서버에
 - MCP 서버가 비정상 종료된 경우 자동 재시작을 시도한다.
 
 ## MCP Tool 호출 흐름 (Agent 관점)
-1. Agent 가 MCP 도구를 사용하고 싶을 때 먼저 `mcp_list_tools(server="notion")` 을 호출한다.
+1. Agent 가 MCP 도구를 사용하고 싶을 때 먼저 `mcp_list_tools()` 을 호출한다.
 2. 반환된 tool 목록과 input schema 를 분석하여 적절한 tool 과 arguments 를 결정한다.
 3. `mcp_call_tool(server="notion", tool="search", arguments={"query": "..."})` 을 호출하여 실제 작업을 수행한다.
 4. 결과를 받아 사용자에게 응답한다.
