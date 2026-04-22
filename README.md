@@ -11,10 +11,12 @@
 1. 아래 버튼을 클릭하여 Codespaces를 생성합니다.
 
    [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/MSFT-AI-Build/ghcp-handson)
+2. 창이 뜨면, "Create Codespace" 버튼을 누릅니다<br>
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/c0429c81-60aa-4a37-8961-9720e8a9fd3d" />
 
-2. Codespace가 생성되면 VS Code 웹 에디터가 자동으로 열립니다.
-3. GitHub Copilot, Copilot Chat 확장이 자동 설치되며, **GitHub Copilot CLI**도 기본 설치됩니다.
-4. Python, Node.js 등 실습에 필요한 런타임이 모두 포함되어 있어 추가 설치가 필요 없습니다.
+3. Codespace가 생성되면 VS Code 웹 에디터가 자동으로 열립니다.
+4. GitHub Copilot, Copilot Chat 확장이 자동 설치되며, **GitHub Copilot CLI**도 기본 설치됩니다.
+5. Python, Node.js 등 실습에 필요한 런타임이 모두 포함되어 있어 추가 설치가 필요 없습니다.
 
 ### 로컬 환경에서 시작하기
 - VS Code를 활용합니다.
