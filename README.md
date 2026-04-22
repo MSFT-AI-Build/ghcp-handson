@@ -14,7 +14,7 @@
 2. 창이 뜨면, "Create Codespace" 버튼을 누릅니다<br>
 <img width="400" alt="image" src="https://github.com/user-attachments/assets/c0429c81-60aa-4a37-8961-9720e8a9fd3d" />
 
-3. Codespace가 생성되면 VS Code 웹 에디터가 자동으로 열립니다.
+3. Codespace가 생성되면 VS Code 웹 에디터가 자동으로 열립니다. (처음 활성화시 5분 정도 소요됨)
 4. GitHub Copilot, Copilot Chat 확장이 자동 설치되며, **GitHub Copilot CLI**도 기본 설치됩니다.
 5. Python, Node.js 등 실습에 필요한 런타임이 모두 포함되어 있어 추가 설치가 필요 없습니다.
 
