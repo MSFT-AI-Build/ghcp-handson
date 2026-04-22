@@ -14,6 +14,12 @@
 
 ## Step 1: Ask Mode로 함수 구현 방법 알아보기
 
+### 1-0. Copilot Chat 시작하기
+- Codespace를 띄우고 VSCode 우측의 Copilot Chat에서 작업을 시작합니다. <br>
+- (혹시 이미 열어두시고 작업하셨다면 , 새로운 채팅으로 시작합니다.(New Session) <br>
+<img width="1151" height="645" alt="image-3" src="https://github.com/user-attachments/assets/dc768b6e-9698-40fb-a70c-9c8cbffe89cc" />
+<br>
+
 ### 1.1 스켈레톤 코드 확인
 - `Task1/src/calculator.py` 파일을 엽니다.
 - 파일에는 8개의 계산기 함수가 **스켈레톤(함수 시그니처 + docstring만 있고, 본문은 `pass`)** 형태로 준비되어 있습니다.
@@ -34,7 +40,7 @@ def subtract(a: float, b: float) -> float:
 
 ### 1.2 Copilot Chat을 Ask Mode로 설정
 1. 우측에 열려 있는 **Copilot Chat** 패널을 확인합니다.
-2. Chat 창 상단의 모드 선택에서 **Ask**를 선택합니다.
+2. Chat 창 우측 하단의 모드 선택에서 **Ask**를 선택합니다.
    - **Ask 모드: 질문에 대한 답변과 코드 제안을 제공 (파일을 직접 수정하지 않음)**
    - Plan 모드: 요청을 처리하기 위해 깊게 생각하고 결과를 제공
    - Agent 모드: 코드 수정, 터미널 실행, 파일 생성 등을 자율적으로 수행
@@ -115,7 +121,7 @@ calculator.py에 다음 기능을 추가하려면 어떻게 하면 될까?
 
 ### 3.1 LLM 모델 변경
 - Chat에서 사용하는 LLM 모델을 변경해봅니다.<br>
-  Chat 창 상단의 모델 선택 드롭다운에서 다른 모델을 선택할 수 있습니다.
+  Chat 창 우측하단의 모델 선택 드롭다운에서 다른 모델을 선택할 수 있습니다.
   (사용 가능한 모델은 라이센스 및 시점에 따라 다를 수 있습니다.)
 
 - Reference: [VS Code Copilot settings reference 문서](https://code.visualstudio.com/docs/copilot/copilot-settings)
