@@ -46,7 +46,7 @@
 - "TypeScript와 JavaScript의 차이점을 알려줘"
 - "오늘 할 일 목록을 만들어줘"
 
-> .env 파일에 별도로 제공되는 Azure OpenAI 관련 환경변수를 추가해야 합니다.
+> .env 파일에 별도로 제공되는 Azure OpenAI 관련 환경변수를 추가해야 합니다. 환경변수들은 [../Task3/env.example](../Task3/env.example) 파일을 참고하여 추가해주세요.
 
 ### Step 2. '도구를 쓸 수 있는' Agent
 
