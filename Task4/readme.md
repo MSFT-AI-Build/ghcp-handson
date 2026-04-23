@@ -32,19 +32,19 @@
 1. Codespace 의 작업 영역 변경: [`파일`] > [`폴더 열기`] > `/workspaces/ghcp-handson/Task4/` 입력
     <img src="assets/procedure-001.png" width="800">
     <img src="assets/procedure-002.png" width="800">
-1. Codespace 의 우측상단의 Chat View 를 열고 새로운 Chat 을 시작합니다.
+2. Codespace 의 우측상단의 Chat View 를 열고 새로운 Chat 을 시작합니다.
     <img src="assets/procedure-004.png" width="800">
-2. Slash Command ("/") 를 입력하여 각 Step 별로 Prompt 를 선택하여 Copilot에게 코드를 생성하도록 지시합니다.
+3. Slash Command ("/") 를 입력하여 각 Step 별로 Prompt 를 선택하여 Copilot에게 코드를 생성하도록 지시합니다. Step 진행은 [여기](#step-1-대화할-수-있는-agent) 로 이동하세요.
     > 각 Step은 이전 단계를 확장하므로, **반드시 순서대로** 진행합니다.
-3. Copilot이 생성한 코드를 확인하고 backend 와 frontend 에 있는 README.md 파일의 지침에 따라 필요한 패키지를 설치하고 서버를 실행합니다.
+4. Step 진행 중에는 Copilot이 생성한 코드를 확인하고 backend 와 frontend 에 있는 README.md 파일의 지침에 따라 필요한 패키지를 설치하고 서버를 실행합니다.
     - 터미널 열기: `[명령어 팔레트]`(`Ctrl+Shift+P`) > input field 에 `새 터미널 만들기` 입력 & 선택
         <img src="assets/procedure-003.png" width="800">
     - README.md 의 backend 실행방법에 따라 명령어 실행하고, frontend 실행을 위해 아래와 같이 새로운 터미널 추가
         <img src="assets/procedure-006.png" width="800">
     - frontend 실행하면 오른쪽 하단에 `브라우저에서 열기` 선택
         <img src="assets/procedure-007.png" width="800">
-4. Chat UI를 통해 Agent와 대화하며 각 Step의 기능을 테스트합니다.
-5. 만약 Step 을 완성시키지 못했다면, 터미널에 각 Step 에 있는 **Git Commit** 명령어를 실행하여 완성된 코드로 checkout 합니다.
+5. Chat UI를 통해 Agent와 대화하며 각 Step의 기능을 테스트합니다.
+6. 만약 Step 을 완성시키지 못했다면, 터미널에 각 Step 에 있는 **Git Commit** 명령어를 실행하여 완성된 코드로 checkout 합니다.
     <img src="assets/procedure-005.png" width="800">
 
 ### Step 1. '대화할 수 있는' Agent
