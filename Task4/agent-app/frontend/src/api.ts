@@ -1,0 +1,184 @@
+import { loadSettings } from "./settings";
+
+export type ChatMessage = { role: "user" | "assistant"; message: string };
+
+export const DEFAULT_API_BASE =
+  (import.meta.env.VITE_API_BASE as string | undefined) ?? "http://localhost:8000";
+
+export function resolveApiBase(): string {
+  return loadSettings()?.apiBase ?? DEFAULT_API_BASE;
+}
+
+export async function sendChat(message: string): Promise<ChatMessage> {
+  const base = resolveApiBase();
+  const res = await fetch(`${base}/api/chat`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Chat request failed (${res.status}): ${detail}`);
+  }
+  return (await res.json()) as ChatMessage;
+}
+
+export type StreamHandlers = {
+  onDelta: (text: string) => void;
+  onTool?: (event: ToolEvent) => void;
+  onWorker?: (event: WorkerEvent) => void;
+  onWorkerTool?: (event: WorkerToolEvent) => void;
+  onDone?: () => void;
+  signal?: AbortSignal;
+};
+
+export type ToolEvent = {
+  name: string;
+  type?: string;
+  server?: string;
+  arguments?: Record<string, unknown>;
+  result?: unknown;
+};
+
+export type WorkerStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export type WorkerEvent = {
+  id: string;
+  role: string;
+  task: string;
+  status: WorkerStatus;
+  instructions?: string;
+  work_dir?: string | null;
+  result?: string | null;
+  error?: string | null;
+};
+
+/** A tool call made by a Worker agent, enriched with worker identity. */
+export type WorkerToolEvent = ToolEvent & {
+  worker_id: string;
+  worker_role?: string;
+};
+
+export type ToolSpec = {
+  name: string;
+  type: string;
+  description: string;
+  status: string;
+};
+
+export type McpServerInfo = {
+  name: string;
+  transport: string;
+  command?: string;
+  args?: string[];
+  status: string;
+  tools: { name: string; description?: string }[];
+};
+
+export type ToolsOverview = {
+  tools: ToolSpec[];
+  mcp_servers: McpServerInfo[];
+};
+
+export async function fetchTools(): Promise<ToolsOverview> {
+  const base = resolveApiBase();
+  const res = await fetch(`${base}/api/tools`);
+  if (!res.ok) {
+    throw new Error(`Failed to load tools (${res.status})`);
+  }
+  return (await res.json()) as ToolsOverview;
+}
+
+export type AgentInfo = {
+  id: string;
+  role: string;
+  work_dir: string;
+  tools: string[];
+};
+
+export type AgentsOverview = {
+  supervisor: AgentInfo;
+  workers: AgentInfo[];
+};
+
+export async function fetchAgents(): Promise<AgentsOverview> {
+  const base = resolveApiBase();
+  const res = await fetch(`${base}/api/agents`);
+  if (!res.ok) {
+    throw new Error(`Failed to load agents (${res.status})`);
+  }
+  return (await res.json()) as AgentsOverview;
+}
+
+export async function streamChat(
+  message: string,
+  { onDelta, onTool, onWorker, onWorkerTool, onDone, signal }: StreamHandlers
+): Promise<void> {
+  const base = resolveApiBase();
+  const res = await fetch(`${base}/api/chat/stream`, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "text/event-stream" },
+    body: JSON.stringify({ message }),
+    signal,
+  });
+  if (!res.ok || !res.body) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Chat stream failed (${res.status}): ${detail}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let idx: number;
+    while ((idx = buffer.indexOf("\n\n")) !== -1) {
+      const raw = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      const evt = parseSseEvent(raw);
+      if (!evt) continue;
+      if (evt.event === "delta" && typeof evt.data?.text === "string") {
+        onDelta(evt.data.text);
+      } else if (evt.event === "tool" && evt.data?.name) {
+        onTool?.(evt.data as ToolEvent);
+      } else if (evt.event === "worker" && evt.data?.id) {
+        onWorker?.(evt.data as WorkerEvent);
+      } else if (evt.event === "worker_tool" && evt.data?.name) {
+        onWorkerTool?.(evt.data as WorkerToolEvent);
+      } else if (evt.event === "error") {
+        throw new Error(evt.data?.detail ?? "stream error");
+      } else if (evt.event === "done") {
+        onDone?.();
+        return;
+      }
+    }
+  }
+  onDone?.();
+}
+
+function parseSseEvent(
+  raw: string
+): { event: string; data: any } | null {
+  let event = "message";
+  const dataLines: string[] = [];
+  for (const line of raw.split("\n")) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+  }
+  if (dataLines.length === 0) return null;
+  const dataStr = dataLines.join("\n");
+  try {
+    return { event, data: JSON.parse(dataStr) };
+  } catch {
+    return { event, data: { text: dataStr } };
+  }
+}

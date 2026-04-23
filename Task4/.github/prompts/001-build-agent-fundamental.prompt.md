@@ -32,9 +32,10 @@ User ──► Chat UI ──► REST API Server
 ## 기술 스택
 - **Python 3.12** + **FastAPI** + **uvicorn** (async ASGI)
 - Microsoft Agent Framework: `agent-framework==1.0.1`
-- Agent Class: `agent_framework.Agent` 를 사용하고, chat_client 로 `agent_framework.openai.OpenAIChatClient` 를 사용한다. 예제 코드는 https://github.com/microsoft/agent-framework/blob/b89adb280b45a41ab0f0ff28d7947a73d3adbd4c/python/samples/02-agents/providers/azure/openai_client_basic.py#L9 을 참고한다. Client credential 은 API Key 를 사용한다.
+- Agent Class: `agent_framework.Agent` 를 사용하고, chat_client 로 `agent_framework.openai.OpenAIChatClient` 를 사용한다. 예제 코드는 https://github.com/microsoft/agent-framework/blob/b89adb280b45a41ab0f0ff28d7947a73d3adbd4c/python/samples/02-agents/providers/azure/openai_client_basic.py#L9 을 참고한다.
 - 다른 패키지는 버전을 명시하지 않아도 된다.
 - OpenAIChatClient 의 argument 로 api_version 을 전달하지 않아도 된다.
+- .env 파일을 사용하여 azure_openai_key, azure_openai_endpoint, azure_openai_deployment 값을 설정할 수 있다. (예: `AZURE_OPENAI_KEY=xxx`)
 
 # 테스트 및 완료 기준 (Agent 연동)
 
@@ -45,8 +46,7 @@ User ──► Chat UI ──► REST API Server
 - **프레임워크**: `pytest` + `httpx` 의 `AsyncClient` 또는 FastAPI `TestClient` 로 HTTP 레이어 검증.
 - **범위**:
   - `GET /health` (또는 동일 목적 엔드포인트): 200 및 응답 본문 스키마.
-  - Chat 관련 REST: 요청 본문 검증(400 등), 성공 시 응답 형식(예: `message` / `role` 등 프로젝트에서 정한 필드). **API Key 미제공·무효** 시 기대한 상태 코드(예: 401) 검증.
-  - Chat 호출 시 **테스트용 헤더**(가짜 API Key)를 넣어 인증 경로가 타는지 확인한다(실제 Azure 호출은 목).
+  - Chat 관련 REST: 요청 본문 검증(400 등), 성공 시 응답 형식(예: `message` / `role` 등 프로젝트에서 정한 필드).
 - **Agent 연동**: `OpenAIChatClient` / `Agent.run` 은 유닛·통합 테스트에서 **목** 처리하여 실제 Azure OpenAI 없이도 통과하도록 한다(고정된 더미 응답 반환).
 - **실패 시나리오**: 잘못된 JSON, 필수 필드 누락 등 최소 1건.
 
@@ -55,7 +55,7 @@ User ──► Chat UI ──► REST API Server
 - **프레임워크**: **Vitest** + **Testing Library** (`@testing-library/react`). API는 **MSW(Mock Service Worker)** 로 목 처리하여 Chat 페이지가 **성공/실패 응답**에 맞게 UI를 갱신하는지 검증.
 - **범위**:
   - 라우팅: Chat / Agents / Settings 경로 진입 시 기대 레이아웃 또는 제목 표시.
-  - Chat: 메시지 전송 시 목 API 호출(메서드·URL·body) 또는 화면에 사용자 메시지·응답 표시. 요청에 **인증 헤더**(API Key)가 포함되는지 검증할 수 있으면 포함한다.
+  - Chat: 메시지 전송 시 목 API 호출(메서드·URL·body) 또는 화면에 사용자 메시지·응답 표시.
   - Settings: 저장 후 Chat 요청에 동일 credential 이 붙는지(또는 미저장 시 안내·차단) 최소 한 가지 시나리오.
 
 ## 통과 조건 (Definition of Done)
