@@ -68,7 +68,7 @@
 ### 3-1. 음성 인식 기능 요청
 - Copilot Chat에 음성인식 기능을 추가해 달라고 요청합니다.<br>
 `자 이제, App에 음성인식 기능을 붙이려고해. 기존 코드에 변경을 최소화하고, 최대한 간단하게 코드 수정할 부분을 위주로 알려줘.
-먼저, 사용자 Input Text 우측에 마이크 버튼을 추가해주고, 누르면 사용자의 음성을 Input으로 받고, Azure의 Speech to Text API를 사용해서 인식된 Text 결과는 Input 창에 적어준다. 관련된 API정보는 .env파일을 참고해`<br>
+먼저, 사용자 Input Text 우측에 마이크 버튼을 추가해주고, 누르면 사용자의 음성을 Input으로 받고, Azure의 Speech to Text API를 사용해서 인식된 Text 결과는 Input 창에 적어준다. 관련된 API정보는 env.example파일을 참고해`<br>
 <img width="345" height="588" alt="image-12" src="https://github.com/user-attachments/assets/fcfec816-3f05-4cee-8c2f-41704e89e597" />
 <br>
 - 정상적으로 수정됐다면 웹화면에서 마이크 버튼 누른후 음성 인식이 정상적으로 됐다면 성공입니다. <br>
@@ -79,7 +79,7 @@
 ### 3-3. 음성 출력 기능 추가
 - 이제 Text 결과도 음성으로 함께 출력하는 기능을 붙여봅니다.<br>
 Copilot Chat에 다음과 같이 요청해봅니다.<br>
-`자 이제, 출력된 Text를 Speech로 목소리로도 출력하는 것을 추가해줘. 음성 출력에 사용되는 API도 .env파일을 그대로 참고하면 돼`<br>
+`자 이제, 출력된 Text를 Speech로 목소리로도 출력하는 것을 추가해줘. 음성 출력에 사용되는 API도 env.example 파일을 참고하면 돼`<br>
 <img width="486" height="338" alt="image-14" src="https://github.com/user-attachments/assets/b6a03847-e7aa-491d-af25-a15b8f58842e" />
 <br>
 - 질문의 답변이 텍스트 + 음성으로 함께 나온다면 성공적으로 완료 되었습니다 .<br>
