@@ -17,9 +17,12 @@
 ### 1-2. 웹앱 코드 생성
 - Agent 모드로 진행합니다<br>
 <img width="1150" height="645" alt="image-2" src="https://github.com/user-attachments/assets/391d5c77-6a36-4561-ac48-bf5c6dbf367b" />
-<br>
-- 간단한 파이썬 웹앱 코드를 생성해달라고 Copilot Chat에 입력합니다. <br>
-`파이썬 코드로, 웹화면을 띄워주는 코드를 새로 만들어주고, 상단에는 사용자 Input을 받고 아래는 send 버튼을 만들어줘` <br>
+
+- 간단한 파이썬 웹앱 코드를 생성해달라고 Copilot Chat에 입력합니다.
+  
+`
+파이썬 코드로, 웹화면을 띄워주는 코드를 새로 만들어주고, 상단에는 사용자 Input을 받고 아래는 send 버튼을 만들어줘
+`
 <br>
 
 ### 1-3. 프로젝트 워크스페이스 생성
@@ -32,6 +35,7 @@
 -  app.py가 생성된 것을 확인하고, 실제 App을 지시에 따라 실행해봅니다.<br>
 <img width="1151" height="647" alt="image-5" src="https://github.com/user-attachments/assets/72fa44c1-221b-45b6-a77a-594d934538a0" />
 <br>
+- 실행하면, 웹 브라우저를 오픈하게 됩니다. <br>
 <img width="895" height="615" alt="image-6" src="https://github.com/user-attachments/assets/06a40d1b-c688-4239-a339-a252faa45bc0" />
 <br>
 <img width="651" height="486" alt="image-7" src="https://github.com/user-attachments/assets/6c207c1f-fc55-4774-a4b9-43f2ba0dcd71" />
