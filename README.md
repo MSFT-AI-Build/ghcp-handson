@@ -35,24 +35,26 @@
   - Python: 3.x, VS Code의 Python language pack
 
 
-## [Task 1](/Task1/readme.md): 계산기 함수 완성하기 (**Copilot Chat – Agent Mode** 사용)
- - GitHub Copilot Chat의 Agent Mode를 활용하여 미리 준비된 계산기 스켈레톤 코드(`calculator.py`)의 구현을 완성합니다.
- - Agent Mode가 코드 수정 → 터미널 실행 → 검증까지 자율적으로 수행하는 과정을 체험합니다.
- - Agent Mode를 활용한 테스트 코드 자동 생성, 기능 확장, VS Code Copilot 설정을 확인합니다.
+## [Task 1](/Task1/readme.md): Task 1: 계산기 함수 완성하기 (Copilot Chat – Ask Mode 사용)
+ - GitHub Copilot Chat의 Ask Mode를 활용하여 미리 준비된 계산기 함수 스켈레톤의 구현을 완성합니다.
+ - Ask Mode에 질문하고, 제안받은 코드를 직접 에디터에 적용하며 코드를 완성하는 과정을 체험합니다.
+ - Copilot Chat의 Ask Mode를 사용하여 코드 구현에 대한 가이드를 받는 방법을 익힙니다.
+ - 미완성 스켈레톤 코드(calculator.py)에 대해 Ask Mode로 함수 구현 방법을 질문합니다.
 
-## [Task 2](/Task2/readme.md): 간단한 웹 게임 만들기 (**Copilot Chat** 기능 사용)
- - GitHub Copilot Chat을 활용하여 2048 웹 게임을 만들어 봅니다.
- - Copilot Chat의 Ask 모드로 HTML/CSS/JavaScript 코드를 생성합니다.
- - Vision 기능으로 디자인 이미지를 기반으로 코드를 제안받아 봅니다.
- - Inline Chat으로 특정 코드 영역을 빠르게 수정합니다.
- - Copilot Code Review와 Custom Instruction을 활용하여 코드 리뷰를 받아 봅니다.
+## [Task 2](/Task2/readme.md): 간단한 웹 게임 만들기 (Copilot Chat – Agent Mode 사용)
+ - GitHub Copilot Chat의 Agent Mode를 활용하여 2048 웹 게임을 만들어 봅니다.
+ - Step by step 프롬프팅만으로 Agent가 코드 생성, 파일 생성, 실행까지 자율적으로 수행하는 과정을 체험합니다.
+ - Copilot Chat의 **Agent Mode**를 활성화하고 사용하는 방법을 익힙니다.
+ - Agent Mode에 단계적으로 프롬프트를 입력하여 2048 게임을 처음부터 완성합니다.
+
 
 ## [Task 3](/Task3/readme.md): 나만의 음성비서 앱만들기 (AI 및 LLM활용)
 - 간단한 채팅 앱을 로컬에서 생성하고 기동해봅니다.
 - 채팅앱에 생성형 LLM을 통해 답변을 받도록 기능을 추가합니다.
 - 음성 인식 기능과 음성 출력 기능을 추가합니다.
 
-## [Task 4](/Task4/readme.md) : MCP 서버 연동하기
-- MCP 가 무엇일까요 ?
-- Visual Studio Code 내 MCP 와 연동되는 Copilot Agent Mode 을 사용해 봅니다.
-- MCP 와 연동하는 AI Agent 를 만들어 봅니다.
+## [Task 4](/Task4/readme.md) : Multi-Agent Playground — 협업하는 AI 만들기
+- Github Copilot 를 활용하여 Agent 의 기본 기능을 구축하고 협업 가능한 Agent 를 만들어 갑니다.
+- 각 단계는 이전 단계의 기능을 확장하며, 최종적으로 Supervisor Agent가 전문 Worker Agent를 동적으로 생성하여 작업을 위임하는 Multi-Agent 시스템을 구현합니다.
+- Github Copilot 이 실수할 때마다, 그 실수를 다시 못하게 AGENTS.md 도 수정해 나가 보세요.
+- 미리 작성된 Instruction Prompt 를 Github Copilot Chat(Agent Mode)에 전달하여 각 Step 별로 코드를 생성하고 실행합니다.
